@@ -17,7 +17,7 @@
     .guide-wrap {
       position: relative;
       width: 360px; height: 720px;
-      background: #000;
+      background: linear-gradient(to bottom right, #eeeeee, #aaaaaa);
       border-radius: 24px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.06);
       overflow: hidden;
@@ -79,8 +79,10 @@
         -4px -4px 8px rgba(255,255,255,0.9),
          4px  4px 8px rgba(0,0,0,0.1);
       margin-bottom:40px;
-      white-space:nowrap; overflow:hidden;
-    }
+      white-space:nowrap; overflow: hidden;
+  transition: opacity 0.5s ease;
+  opacity: 1;
+}
     .graphic-text {
       font-size:32px; font-weight:bold;
       color:#ffffff; margin-bottom:20px;
@@ -167,9 +169,12 @@
             <stop offset="100%" stop-color="#00C1FF" />
           </linearGradient>
         </defs>
-        <path id="blobPath" fill="url(#blobGrad)"
-              d="M450,100 C520,180 580,300 480,380 C380,460 260,460 180,380
-                 C100,300 140,180 230,120 C320,60 400,80 450,100 Z">
+        <path
+  id="blobPath"
+  fill="none"
+  stroke="url(#blobGrad)"
+  stroke-width="1"
+  d="M450,100 C520,180 580,300 480,380 ... Z">
           <animate id="blobAnim" attributeName="d" dur="0.8s" fill="freeze"
                    calcMode="spline" keyTimes="0;1"
                    keySplines="0.42 0 0.58 1" />
@@ -223,14 +228,20 @@
 
       // --- 커스텀 커서 & idle 복원 ---
       function resetIdle() {
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => {
-          if (prevIdx === 0) {
-            textEl.textContent = originalText;
-            textEl.style.fontSize = '72px';
-          }
-        }, 3000);
-      }
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (prevIdx === 0) {
+      // 페이드 아웃
+      textEl.style.opacity = 0;
+
+      setTimeout(() => {
+        textEl.textContent = originalText;
+        textEl.style.fontSize = '72px';
+        textEl.style.opacity = 1;
+      }, 500);
+    }
+  }, 3000);
+}
       document.addEventListener('mousemove', e => {
         cursor.style.left = e.clientX + 'px';
         cursor.style.top  = e.clientY + 'px';
