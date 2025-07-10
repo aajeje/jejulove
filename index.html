@@ -3,17 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Guide Page UI</title>
+  <title>MONSS DESIGN UI</title>
   <style>
-    /* 전체 레이아웃 */
+    /* 기본 커서 복원 */
     body, html {
       margin: 0; padding: 0;
       width: 100%; height: 100%;
       display: flex; justify-content: center; align-items: center;
       background: #f7f7f7;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      cursor: auto;
+      cursor: default;
     }
+
+    /* 커스텀 커서 */
+    .custom-cursor {
+      position: fixed; top: 0; left: 0;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 2px solid #87CEEB;
+      background: transparent;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    .custom-cursor.active {
+      border-color: transparent;
+      background: conic-gradient(from 0deg, #FF5E94, #00C1FF, #FF5E94);
+      animation: spin 1s linear infinite;
+    }
+
     .guide-wrap {
       position: relative;
       width: 360px; height: 720px;
@@ -22,92 +44,268 @@
       box-shadow: 0 4px 8px rgba(0,0,0,0.06);
       overflow: hidden;
     }
-    /* 상단 햄버거 아이콘 */
-    .nav-icon { position: absolute; top: 16px; left: 16px; width: 24px; height: 24px; cursor: pointer; z-index: 3; }
-    .nav-icon::before, .nav-icon::after, .nav-icon div { content: ''; display: block; height: 2px; width: 24px; background: #bbb; margin: 5px 0; }
-    /* 우측 스텝 레이블 */
-    .step-label { position: absolute; top: 16px; right: 16px; font-size: 14px; color: #87aaf1; z-index: 3; }
-    /* 배경 블롭 */
-    .blob { position: absolute; width: 420px; height: 420px; top: 64px; left: 50%; transform: translateX(-50%); pointer-events: none; z-index: 1; }
+    .nav-icon {
+      position: absolute; top: 16px; left: 16px;
+      width: 24px; height: 24px;
+      cursor: pointer; z-index: 3;
+    }
+    .nav-icon::before, .nav-icon::after, .nav-icon div {
+      content: ''; display: block;
+      height: 2px; width: 24px;
+      background: #bbb; margin: 5px 0;
+    }
+    .step-label {
+      position: absolute; top: 16px; right: 16px;
+      font-size: 14px; color: #87aaf1;
+      z-index: 3;
+    }
+    .blob {
+      position: absolute;
+      width: 600px; height: 600px;
+      top: 80px; left: -30%;
+      pointer-events: none;
+      z-index: 1;
+      transform-origin: center;
+      transition: transform 0.8s ease;
+    }
     .blob svg { width: 100%; height: 100%; }
-    /* 화면 콘텐츠 */
-    .screen-content { position: absolute; top: 64px; left: 0; right: 0; bottom: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 2; }
-    /* Monss 텍스트 네오뮤피즘 효과 */
-    .monss-text { font-size: 72px; font-weight: bold; color: #f7f7f7; text-shadow: -4px -4px 8px rgba(255,255,255,0.9), 4px 4px 8px rgba(0,0,0,0.1); margin-bottom: 40px; user-select: none; white-space: nowrap; overflow: hidden; }
-    /* 버튼 그룹 위치 고정 */
-    .actions { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; padding: 0 24px; z-index: 2; }
-    .action-btn { width: 100%; max-width: 280px; height: 48px; background: #ffffff; border: none; border-radius: 24px; font-size: 16px; color: #607d8b; cursor: pointer; box-shadow: -3px -3px 6px rgba(255,255,255,0.85), 3px 3px 6px rgba(0,0,0,0.07); transition: transform 0.1s ease, box-shadow 0.1s ease; }
-    .action-btn:active { transform: scale(0.96); box-shadow: inset -2px -2px 4px rgba(255,255,255,0.7), inset 2px 2px 4px rgba(0,0,0,0.05); }
-    /* 하단 네비게이션 */
-    .footer { position: absolute; bottom: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
-    .footer .title { font-size: 14px; color: #aaa; }
-    .dots { display: flex; gap: 6px; }
-    .dot { width: 8px; height: 8px; background: #e0e0e0; border-radius: 50%; }
+    .screen-content {
+      position: absolute;
+      top: 64px; left: 0; right: 0; bottom: 88px;
+      display: flex; flex-direction: row;
+      overflow-x: auto; scroll-snap-type: x mandatory;
+      scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+      cursor: grab; z-index: 2; user-select: none;
+    }
+    .screen-content.active { cursor: grabbing; }
+    .screen-content::-webkit-scrollbar { display: none; }
+
+    .screen-page {
+      flex: 0 0 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      user-select: none;
+    }
+    .screen-page.active { opacity: 1; }
+
+    .monss-text {
+      font-size: 72px; font-weight: bold;
+      color: #f7f7f7;
+      text-shadow:
+        -4px -4px 8px rgba(255,255,255,0.9),
+         4px  4px 8px rgba(0,0,0,0.1);
+      margin-bottom: 40px;
+      white-space: nowrap; overflow: hidden;
+    }
+    .graphic-text {
+      font-size: 32px; font-weight: bold;
+      color: #ffffff; margin-bottom: 20px;
+    }
+    .actions {
+      position: absolute;
+      bottom: 120px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column;
+      align-items: center; gap: 16px;
+      width: 100%; padding: 0 24px;
+      z-index: 2;
+    }
+    /* 첫 페이지 버튼 중앙 */
+    .screen-page:first-child .actions {
+      position: relative;
+      bottom: auto; left: auto; transform: none;
+      margin-top: 20px;
+    }
+    .action-btn {
+      width: 100%; max-width: 280px;
+      height: 48px;
+      background: #ffffff; border: none;
+      border-radius: 24px;
+      font-size: 16px; color: #607d8b;
+      box-shadow:
+        -3px -3px 6px rgba(255,255,255,0.85),
+         3px  3px 6px rgba(0,0,0,0.07);
+      transition: transform 0.1s ease,
+                  box-shadow 0.1s ease;
+      cursor: pointer;
+    }
+    .action-btn:active {
+      transform: scale(0.96);
+      box-shadow:
+        inset -2px -2px 4px rgba(255,255,255,0.7),
+        inset  2px  2px 4px rgba(0,0,0,0.05);
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 16px; left: 0; right: 0;
+      display: flex; justify-content: center;
+      align-items: center; gap: 12px;
+      z-index: 2;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      background: #e0e0e0; border-radius: 50%;
+      transition: background 0.3s;
+      cursor: pointer;
+    }
     .dot.active { background: #87aaf1; }
   </style>
 </head>
 <body>
+  <div class="custom-cursor"></div>
   <div class="guide-wrap">
     <div class="nav-icon"><div></div></div>
-    <div class="step-label">02&nbsp;&mdash; Waiter</div>
+    <div class="step-label">01 — Waiter</div>
     <div class="blob">
       <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="grad" gradientUnits="userSpaceOnUse" gradientTransform="scale(1.5)" x1="0%" y1="50%" x2="100%" y2="50%">
+          <linearGradient id="blobGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#FF5E94" />
             <stop offset="100%" stop-color="#00C1FF" />
           </linearGradient>
         </defs>
-        <path fill="url(#grad)" d="M450,60 C500,150 600,200 600,300 C600,400 500,500 400,550 C300,600 200,550 150,450 C100,350 150,250 200,150 C250,50 350,-50 450,60 Z" />
+        <path id="blobPath" fill="url(#blobGrad)"
+              d="M450,100 C520,180 580,300 480,380 C380,460 260,460 180,380
+                 C100,300 140,180 230,120 C320,60 400,80 450,100 Z">
+          <animate id="blobAnim" attributeName="d" dur="0.8s" fill="freeze"
+                   calcMode="spline" keyTimes="0;1"
+                   keySplines="0.42 0 0.58 1" />
+        </path>
       </svg>
     </div>
+
     <div class="screen-content">
-      <div class="monss-text">monss</div>
-      <div class="actions">
-        <button id="emailBtn" class="action-btn">Email</button>
-        <button id="phoneBtn" class="action-btn">Phone</button>
+      <div class="screen-page">
+        <div class="monss-text">monss</div>
+        <div class="actions">
+          <button id="emailBtn" class="action-btn">Email</button>
+          <button id="phoneBtn" class="action-btn">Phone</button>
+        </div>
+      </div>
+      <div class="screen-page">
+        <div class="graphic-text">graphic designer</div>
+      </div>
+      <div class="screen-page">
+        <div class="graphic-text">Jiwon</div>
       </div>
     </div>
+
     <div class="footer">
-      <span class="title">Guide page</span>
-      <div class="dots">
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot active"></span>
-      </div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot active"></div>
     </div>
   </div>
+
   <script>
-    const textEl = document.querySelector('.monss-text');
-    const originalText = textEl.textContent;
-    const originalFontSize = parseFloat(window.getComputedStyle(textEl).fontSize);
-    const parentWidth = textEl.parentElement.clientWidth;
-    let revertTimer;
+    document.addEventListener('DOMContentLoaded', () => {
+      const cursor = document.querySelector('.custom-cursor');
+      document.addEventListener('mousemove', e => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top  = e.clientY + 'px';
+      });
+      document.addEventListener('mousedown', () => cursor.classList.add('active'));
+      document.addEventListener('mouseup',   () => cursor.classList.remove('active'));
 
-    function updateText(newText) {
-      clearTimeout(revertTimer);
-      textEl.style.fontSize = originalFontSize + 'px';
-      textEl.textContent = newText;
-      const textWidth = textEl.scrollWidth;
-      if (textWidth > parentWidth) {
-        const newSize = originalFontSize * (parentWidth / textWidth);
-        textEl.style.fontSize = newSize + 'px';
+      const textEl   = document.querySelector('.monss-text');
+      const slider   = document.querySelector('.screen-content');
+      const pages    = Array.from(document.querySelectorAll('.screen-page'));
+      const dots     = Array.from(document.querySelectorAll('.dot'));
+      const stepLabel= document.querySelector('.step-label');
+      const blobAnim = document.getElementById('blobAnim');
+      const blobEl   = document.querySelector('.blob');
+      const parentW  = textEl.parentElement.clientWidth;
+
+      const blobShapes = [
+        "M450,100 C520,180 580,300 480,380 C380,460 260,460 180,380 C100,300 140,180 230,120 C320,60 400,80 450,100 Z",
+        "M400,80 C500,200 600,320 500,400 C400,480 260,480 180,380 C100,280 120,160 220,120 C320,80 380,100 400,80 Z",
+        "M480,120 C560,200 620,320 520,420 C420,520 300,520 200,420 C100,320 140,180 260,100 C380,20 420,80 480,120 Z"
+      ];
+      const blobScales = [1, 1.5, 0.7];
+      let prevIdx = 0;
+
+      function updateText(newText) {
+        textEl.style.fontSize = '72px';
+        textEl.textContent = newText;
+        const w = textEl.scrollWidth;
+        if (w > parentW) {
+          textEl.style.fontSize = (72 * parentW / w) + 'px';
+        }
       }
-      // 3초 후 원래 텍스트로 복원
-      revertTimer = setTimeout(() => {
-        textEl.style.fontSize = originalFontSize + 'px';
-        textEl.textContent = originalText;
-      }, 3000);
-    }
+      document.getElementById('emailBtn').onclick = () => updateText('AAJEJ@hanmail.net');
+      document.getElementById('phoneBtn').onclick = () => {
+        updateText('+821034405333');
+        window.location.href = 'tel:+821034405333';
+      };
 
-    document.getElementById('emailBtn').addEventListener('click', () => {
-      updateText('AAJEJ@hanmail.net');
-    });
+      // Drag, touch scroll
+      let isDown=false, startX, scrollLeft;
+      slider.addEventListener('mousedown', e => {
+        isDown = true; slider.classList.add('active');
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+      });
+      slider.addEventListener('mouseleave', () => { isDown=false; slider.classList.remove('active'); });
+      slider.addEventListener('mouseup',    () => { isDown=false; slider.classList.remove('active'); });
+      slider.addEventListener('mousemove', e => {
+        if (!isDown) return;
+        e.preventDefault();
+        slider.scrollLeft = scrollLeft - (e.pageX - slider.offsetLeft - startX);
+      });
+      slider.addEventListener('touchstart', e => {
+        isDown = true;
+        startX = e.touches[0].pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+      });
+      slider.addEventListener('touchend', () => { isDown=false; });
+      slider.addEventListener('touchmove', e => {
+        if (!isDown) return;
+        slider.scrollLeft = scrollLeft - (e.touches[0].pageX - startX);
+      });
 
-    document.getElementById('phoneBtn').addEventListener('click', () => {
-      updateText('+821034405333');
-      // 스마트폰에서 전화 앱 실행
-      window.location.href = 'tel:01034405337';
+      // Wheel scroll
+      slider.addEventListener('wheel', e => {
+        e.preventDefault();
+        slider.scrollLeft += e.deltaY;
+      }, { passive: false });
+
+      // Dot click navigation
+      dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => {
+          slider.scrollTo({ left: slider.clientWidth * i, behavior: 'smooth' });
+        });
+      });
+
+      // Scroll handler
+      slider.addEventListener('scroll', () => {
+        const maxScroll = slider.scrollWidth - slider.clientWidth;
+        const t = slider.scrollLeft / (maxScroll || 1);
+        const idx = Math.round(t * (pages.length - 1));
+
+        pages.forEach((p, i) => p.classList.toggle('active', i === idx));
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        stepLabel.textContent = `${String(idx+1).padStart(2,'0')} — Waiter`;
+
+        if (idx !== prevIdx) {
+          blobAnim.setAttribute('values',
+            `${blobShapes[prevIdx]};${blobShapes[idx]}`
+          );
+          blobAnim.beginElement();
+          blobEl.style.transform =
+            `translateX(-30%) scale(${blobScales[idx]})`;
+          prevIdx = idx;
+        }
+      });
+
+      // Init
+      pages.forEach((p, i) => p.classList.toggle('active', i === 0));
+      slider.dispatchEvent(new Event('scroll'));
     });
   </script>
 </body>
