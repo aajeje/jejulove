@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone DPR Fixed</title>
+  <title>M Halftone DPR Final Fixed</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     body, html {
@@ -84,7 +84,6 @@ document.addEventListener("DOMContentLoaded", () => {
     off.height = H * ratio;
     const octx = off.getContext('2d');
 
-    // scale instead of transform
     octx.scale(ratio, ratio);
     octx.fillStyle = '#fff';
     octx.fillRect(0, 0, W, H);
@@ -99,8 +98,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (let y = 0; y < H; y += SP) {
       for (let x = 0; x < W; x += SP) {
-        const px = Math.floor(x * ratio);
-        const py = Math.floor(y * ratio);
+        // ★ grid cell center sampling
+        const sampleX = x + SP / 2;
+        const sampleY = y + SP / 2;
+        const px = Math.floor(sampleX * ratio);
+        const py = Math.floor(sampleY * ratio);
         const idx = (py * (W * ratio) + px) * 4;
 
         const brightness = imgData[idx] / 255;
