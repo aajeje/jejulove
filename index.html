@@ -220,7 +220,7 @@
 
       const blobShapes = [
         "M450,100 C520,180 580,300 480,380 C380,460 260,460 180,380 C100,300 140,180 230,120 C320,60 400,80 450,100 Z",
-        "M400,80 C500,200 600,320 500,400 C400,480 260,480 180,380 C100,280 120,160 220,120 C320,80 380,100 400,80 Z",
+        "M400,80 C500,200 600,320 500,400 C400,480 260,480 180,380 C200,280 120,160 220,120 C320,80 380,100 400,80 Z",
         "M480,120 C560,200 620,320 520,420 C420,520 300,520 200,420 C100,320 140,180 260,100 C380,20 420,80 480,120 Z"
       ];
       const blobScales = [1, 1.5, 0.7];
@@ -313,19 +313,27 @@
           isTicking = true;
         }
       });
+      // 교체된 onScroll 함수
       function onScroll() {
         const maxScroll = slider.scrollWidth - slider.clientWidth;
         const t = slider.scrollLeft / (maxScroll || 1);
-        const idx = Math.round(t * (pages.length - 1));
+
+        // 1) 원래 계산된 인덱스
+        let rawIdx = Math.round(t * (pages.length - 1));
+
+        // 2) 현재(prevIdx)와 차이가 1 이상이면 ±1로 보정
+        let idx = rawIdx;
+        if (rawIdx > prevIdx + 1) idx = prevIdx + 1;
+        if (rawIdx < prevIdx - 1) idx = prevIdx - 1;
 
         // 페이지 & 도트 활성화
-        pages.forEach((p,i) => p.classList.toggle('active', i===idx));
-        dots .forEach((d,i) => d.setAttribute('aria-pressed', i===idx));
+        pages.forEach((p,i) => p.classList.toggle('active', i === idx));
+        dots.forEach((d,i) => d.setAttribute('aria-pressed', i === idx));
 
-        // 스텝 라벨
+        // 스텝 라벨 업데이트
         stepLabel.textContent = `${String(idx+1).padStart(2,'0')} — Waiter`;
 
-        // 블롭 모핑 & 크기
+        // 블롭 모핑 & 크기 조정
         if (idx !== prevIdx) {
           blobAnim.setAttribute('values',
             `${blobShapes[prevIdx]};${blobShapes[idx]}`
@@ -334,6 +342,7 @@
           blobEl.style.transform = `translateX(-30%) scale(${blobScales[idx]})`;
           prevIdx = idx;
         }
+
         isTicking = false;
       }
 
