@@ -34,6 +34,7 @@ window.onload = () => {
   let backgroundDots = [];
   const SP = 4;
   let MAX_R;
+  let fontSize = 0;
 
   let started = false;
   let labelTimerStarted = false;
@@ -56,7 +57,7 @@ window.onload = () => {
     backgroundDots = [];
 
     const text = 'M';
-    let fontSize = Math.min(W, H) * 0.4;
+    fontSize = Math.min(W, H) * 0.4;
 
     const off = document.createElement('canvas');
     off.width = W;
@@ -301,7 +302,8 @@ window.onload = () => {
       ctx.fillStyle = '#333';
       ctx.font = '32px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Tap the dots!', W / 2, H / 2);
+      const textY = H/2 + fontSize/2 + 40;
+      ctx.fillText('Tap the dots!', W / 2, textY);
     }
 
     requestAnimationFrame(drawFrame);
