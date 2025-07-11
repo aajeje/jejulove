@@ -95,7 +95,6 @@ window.onload = () => {
           baseR = grad * MAX_R * 0.4;
         }
 
-        // ✅ 최소 반지름 보장
         if (baseR < 0.3) baseR = 0.3;
 
         const dot = {
@@ -116,7 +115,7 @@ window.onload = () => {
       }
     }
 
-    if (backgroundDots.length >= 2) {
+    if (backgroundDots.length >= 3) {
       const shuffled = backgroundDots.sort(() => 0.5 - Math.random());
       shuffled[0].isRed = true;
       shuffled[0].label = '+821034405337';
@@ -125,6 +124,10 @@ window.onload = () => {
       shuffled[1].isRed = true;
       shuffled[1].label = 'aajej@hanmail.net';
       shuffled[1].baseR *= 6;
+
+      shuffled[2].isRed = true;
+      shuffled[2].label = '카카오톡 오픈 채팅방';
+      shuffled[2].baseR *= 6;
     }
 
     if (!labelTimerStarted) {
@@ -149,6 +152,8 @@ window.onload = () => {
           } else if (dot.label === 'aajej@hanmail.net') {
             window.location.href =
               'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
+          } else if (dot.label === '카카오톡 오픈 채팅방') {
+            window.location.href = 'https://open.kakao.com/o/seDPpmGh';
           }
         }
       }
