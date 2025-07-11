@@ -24,7 +24,7 @@
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0,0,0,0.7);
       color: #fff;
       padding: 10px 20px;
       border-radius: 20px;
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     visibleDots = 0;
 
     const text = 'M';
-    fontSize = Math.min(W, H) * 0.3; // ✅ 작게 조정하여 스마트폰에서도 안전
+    fontSize = W * 0.3; // ✅ W 기준으로 제한 → 모바일 대응
 
     const off = document.createElement('canvas');
     off.width = W * ratio;
@@ -120,8 +120,8 @@ document.addEventListener("DOMContentLoaded", () => {
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
 
-    // ✅ DPR 반영하여 좌표를 ratio로 나눔
-    octx.fillText(text, (W / 2) / ratio, (H / 2) / ratio);
+    // ✅ DPR 보정 → 논리좌표 그대로 사용
+    octx.fillText(text, W/2, H/2);
 
     const imgData = octx.getImageData(0, 0, W * ratio, H * ratio).data;
 
@@ -345,7 +345,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const textWidth = ctx.measureText(dot.label).width;
         const labelX = dot.x;
         let labelY = dot.y - r - 10;
-        if (labelY < 0) labelY = dot.y + r + 20;
+        if (labelY - 14 < 0) {
+          labelY = dot.y + r + 20;
+        }
 
         ctx.fillStyle = 'rgba(255,255,255,0.8)';
         ctx.fillRect(labelX - textWidth/2 - 4, labelY - 16, textWidth + 8, 20);
