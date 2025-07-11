@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone DPR Final Fixed with Toast</title>
+  <title>M Halftone DPR Final Fixed with Toast and Red Dot Fix</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     visibleDots = 0;
 
     const text = 'M';
-    fontSize = W * 0.3; // ✅ W 기준으로 제한 → 모바일 대응
+    fontSize = W * 0.3;
 
     const off = document.createElement('canvas');
     off.width = W * ratio;
@@ -119,8 +119,6 @@ document.addEventListener("DOMContentLoaded", () => {
     octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-
-    // ✅ DPR 보정 → 논리좌표 그대로 사용
     octx.fillText(text, W/2, H/2);
 
     const imgData = octx.getImageData(0, 0, W * ratio, H * ratio).data;
@@ -167,9 +165,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const centerX = W / 2;
       const centerY = H / 2;
-      const MIN_RADIUS = 200;
-      const MAX_RADIUS = 400;
-      const MIN_DISTANCE = 150;
+
+      const MIN_RADIUS = Math.min(W, H) * 0.2;
+      const MAX_RADIUS = Math.min(W, H) * 0.4;
+      const MIN_DISTANCE = Math.min(W, H) * 0.2;
 
       const positions = [];
 
@@ -197,7 +196,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         while (!found && attempt < 2000) {
           attempt++;
-          const angle = Math.random() * 2 * Math.PI;
+
+          // ✅ 각도 제한 → 위/아래로 벗어나지 않도록
+          const angle = -Math.PI/2 + Math.random() * Math.PI;
           const distance = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
 
           let newX = centerX + distance * Math.cos(angle);
