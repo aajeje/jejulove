@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone Mobile Complete</title>
+  <title>M Halftone DPR Complete</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     body, html {
@@ -46,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let initialMessageFading = false;
   let labelTimerStarted = false;
   let labelTimerElapsed = false;
-  let rings = [];
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -79,10 +78,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
 
+    // DPR 적용한 오프스크린 캔버스 생성
+    const ratio = window.devicePixelRatio || 1;
     const off = document.createElement('canvas');
-    off.width = W;
-    off.height = H;
+    off.width = W * ratio;
+    off.height = H * ratio;
     const octx = off.getContext('2d');
+    octx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    octx.fillStyle = '#FFF';
+    octx.fillRect(0, 0, W, H);
 
     octx.fillStyle = '#000';
     octx.font = `${fontSize}px Pretendard, sans-serif`;
@@ -90,14 +95,17 @@ document.addEventListener("DOMContentLoaded", () => {
     octx.textBaseline = 'middle';
     octx.fillText(text, W / 2, H / 2);
 
-    const data = octx.getImageData(0, 0, W, H).data;
+    const data = octx.getImageData(0, 0, W * ratio, H * ratio).data;
 
     for (let y = 0; y < H; y += SP) {
       for (let x = 0; x < W; x += SP) {
-        const idx = (y * W + x) * 4;
-        const brightness = data[idx] / 255;
+        const px = Math.floor(x * ratio);
+        const py = Math.floor(y * ratio);
+        const idx = (py * W * ratio + px) * 4;
 
-        let isText = brightness < 0.9;
+        const brightness = data[idx] / 255;
+        const isText = brightness < 0.9;
+
         let baseR = isText
           ? MAX_R * (1 - brightness)
           : (y / H) * MAX_R * 0.4;
@@ -292,7 +300,6 @@ document.addEventListener("DOMContentLoaded", () => {
         let gradVal = dot.y / H;
         gradVal += 0.05 * Math.sin(time / 1000 + dot.phase);
         gradVal = Math.max(0, Math.min(1, gradVal));
-
         let gray = Math.round(gradVal * 255);
         ctx.fillStyle = `rgb(${gray + dot.randomTint}, ${gray + dot.randomTint}, ${gray + BLUE_TINT})`;
       }
