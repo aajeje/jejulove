@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone DPR Final Fixed with Toast and Red Dot Fix</title>
+  <title>M Halftone - Center Shift Fixed</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -82,15 +82,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function resizeCanvas() {
     const ratio = window.devicePixelRatio || 1;
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     canvas.width = window.innerWidth * ratio;
-    canvas.height = window.innerHeight * ratio;
+    canvas.height = vh * ratio;
     canvas.style.width = window.innerWidth + "px";
-    canvas.style.height = window.innerHeight + "px";
+    canvas.style.height = vh + "px";
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(ratio, ratio);
 
     W = window.innerWidth;
-    H = window.innerHeight;
+    H = vh;
     SP = Math.max(3, Math.floor(W / 200));
     initDots(false, ratio);
   }
@@ -105,6 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const text = 'M';
     fontSize = W * 0.3;
+    const centerShift = H * 0.1;  // ✅ 시각적 중앙으로 내리기
 
     const off = document.createElement('canvas');
     off.width = W * ratio;
@@ -119,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
     octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(text, W/2, H/2);
+    octx.fillText(text, W/2, H/2 + centerShift);
 
     const imgData = octx.getImageData(0, 0, W * ratio, H * ratio).data;
 
@@ -164,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ];
 
       const centerX = W / 2;
-      const centerY = H / 2;
+      const centerY = H / 2 + centerShift;
 
       const MIN_RADIUS = Math.min(W, H) * 0.2;
       const MAX_RADIUS = Math.min(W, H) * 0.4;
@@ -196,8 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         while (!found && attempt < 2000) {
           attempt++;
-
-          // ✅ 각도 제한 → 위/아래로 벗어나지 않도록
           const angle = -Math.PI/2 + Math.random() * Math.PI;
           const distance = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
 
