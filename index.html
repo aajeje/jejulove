@@ -110,14 +110,11 @@ window.onload = () => {
     fontSize = Math.min(W, H) * 0.4;
     const centerShift = H * 0.1;
 
-    // ✅ Offscreen canvas 최적화 (scaleDown 50%)
-    const scaleDown = 0.5;
     const off = document.createElement('canvas');
-    off.width = W * scaleDown;
-    off.height = H * scaleDown;
+    off.width = W;
+    off.height = H;
     const octx = off.getContext('2d');
 
-    octx.scale(scaleDown, scaleDown);
     octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
@@ -126,22 +123,21 @@ window.onload = () => {
     octx.textBaseline = 'middle';
     octx.fillText(text, W / 2, H / 2 + centerShift);
 
-    const data = octx.getImageData(0, 0, off.width, off.height).data;
+    const data = octx.getImageData(0, 0, W, H).data;
 
-    for (let y = 0; y < off.height; y += SP) {
-      for (let x = 0; x < off.width; x += SP) {
-        const idx = (y * off.width + x) * 4;
+    for (let y = 0; y < H; y += SP) {
+      for (let x = 0; x < W; x += SP) {
+        const idx = (y * W + x) * 4;
         const brightness = data[idx] / 255;
         let isText = brightness < 0.9;
         let baseR = isText
           ? MAX_R * (1 - brightness)
-          : (y / off.height) * MAX_R * 0.4;
+          : (y / H) * MAX_R * 0.4;
 
         if (baseR < 0.3) baseR = 0.3;
 
         dots.push({
-          x: x / scaleDown,
-          y: y / scaleDown,
+          x, y,
           baseR,
           isText,
           isRed: false,
@@ -270,6 +266,7 @@ window.onload = () => {
 
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
+
       playClickSound(CLICK_SOUND_FREQ);
 
       if (clickedDot.label === '+821034405337') {
