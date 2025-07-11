@@ -32,7 +32,6 @@ window.onload = () => {
   const RED_LIGHT = '#FF7875';
   const BLUE_TINT = 150;
   const BACKGROUND = '#FAFAFA';
-  const FADE_SPEED = 0.02;
   const CLICK_SOUND_FREQ = 440;
   const DOT_FILL_SPEED = 100;
   const RED_DOT_SCALE = 10;
@@ -44,16 +43,7 @@ window.onload = () => {
   let W, H, SP, MAX_R, fontSize;
   let dots = [], backgroundDots = [];
   let started = false;
-  let labelTimerStarted = false;
-  let labelTimerElapsed = false;
-  let rings = [];
-  let visibleDots = 0;
-  let initialMessageAlpha = 1.0;
-  let initialMessageFading = false;
   let gradients = {};
-  let hoverHandler;
-
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
   function clamp(val, min, max) {
     return Math.min(Math.max(val, min), max);
@@ -74,7 +64,6 @@ window.onload = () => {
     MAX_R = (SP / 2) * 1.5;
     dots = [];
     backgroundDots = [];
-    visibleDots = 0;
 
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
@@ -84,17 +73,6 @@ window.onload = () => {
     off.height = H;
     const octx = off.getContext('2d');
 
-    let textWidth = Infinity;
-    while (textWidth > W - 4 && fontSize > 10) {
-      octx.font = `${fontSize}px Pretendard, sans-serif`;
-      textWidth = octx.measureText(text).width;
-      if (textWidth > W - 4) {
-        fontSize -= 10;
-      }
-    }
-
-    octx.fillStyle = BACKGROUND;
-    octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
     octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
@@ -104,37 +82,26 @@ window.onload = () => {
     const data = octx.getImageData(0, 0, W, H).data;
 
     for (let y = 0; y < H; y += SP) {
-      const grad = y / H;
       for (let x = 0; x < W; x += SP) {
         const idx = (y * W + x) * 4;
         const brightness = data[idx] / 255;
 
-        let baseR;
         let isText = brightness < 0.9;
-        if (isText) {
-          baseR = MAX_R * (1 - brightness);
-        } else {
-          baseR = grad * MAX_R * 0.4;
-        }
+        let baseR = isText
+          ? MAX_R * (1 - brightness)
+          : (y / H) * MAX_R * 0.4;
 
         if (baseR < 0.3) baseR = 0.3;
 
-        const speed = isText ? 1.0 : 0.2;
-
-        const dot = {
-          x, y, baseR, currentR: baseR,
+        dots.push({
+          x, y,
+          baseR, currentR: baseR,
           isText, isRed: false,
-          glow: false, label: '',
-          phase: Math.random() * Math.PI * 2,
-          speed, labelAlpha: 0,
-          visible: false,
-          alpha: 0,
-          randomTint: Math.round(Math.random() * 30),
-          angle: Math.random() * 2 * Math.PI,
-        };
+          label: '',
+          glow: false
+        });
 
-        dots.push(dot);
-        if (!isText) backgroundDots.push(dot);
+        if (!isText) backgroundDots.push(dots[dots.length - 1]);
       }
     }
 
@@ -153,17 +120,29 @@ window.onload = () => {
 
       const positions = [];
 
-      for (let i = 0; i < labels.length; i++) {
+      for (let labelText of labels) {
         let attempt = 0;
         let found = false;
 
-        const labelText = labels[i];
+        // label width 측정
         const labelFontSize = Math.max(12, Math.min(16, W * 0.02));
         ctx.font = `${labelFontSize}px Pretendard, sans-serif`;
         const labelWidth = ctx.measureText(labelText).width;
 
-        const safeMarginX = (RED_DOT_SCALE * MAX_R) + labelWidth/2 + 10;
-        const safeMarginY = (RED_DOT_SCALE * MAX_R) + 20;
+        // 화면 크기의 일정 비율로 safe margin 상한 설정
+        const maxSafeMarginX = W * 0.2;
+        const maxSafeMarginY = H * 0.2;
+
+        let safeMarginX = RED_DOT_SCALE * MAX_R + labelWidth / 2 + 10;
+        let safeMarginY = RED_DOT_SCALE * MAX_R + 20;
+
+        safeMarginX = Math.min(safeMarginX, maxSafeMarginX);
+        safeMarginY = Math.min(safeMarginY, maxSafeMarginY);
+
+        if (safeMarginX * 2 >= W || safeMarginY * 2 >= H) {
+          console.warn("화면이 너무 작아 red dot 배치가 불가능합니다.");
+          continue;
+        }
 
         while (!found && attempt < 2000) {
           attempt++;
@@ -177,10 +156,8 @@ window.onload = () => {
           newY = clamp(newY, safeMarginY, H - safeMarginY);
 
           let conflict = false;
-          for (let j = 0; j < positions.length; j++) {
-            const prev = positions[j];
-            const dist = Math.hypot(newX - prev.x, newY - prev.y);
-            if (dist < MIN_DISTANCE) {
+          for (let pos of positions) {
+            if (Math.hypot(newX - pos.x, newY - pos.y) < MIN_DISTANCE) {
               conflict = true;
               break;
             }
@@ -194,7 +171,7 @@ window.onload = () => {
 
         if (!found) {
           console.warn("Cannot place dot without conflict. Placing at center.");
-          positions.push({ x: centerX, y: centerY, label: labels[i] });
+          positions.push({ x: centerX, y: centerY, label: labelText });
         }
       }
 
@@ -205,71 +182,15 @@ window.onload = () => {
         dot.isRed = true;
         dot.label = positions[i].label;
         dot.baseR *= RED_DOT_SCALE;
-
-        dot.gradient = createDotGradient(dot);
-      }
-
-      if (!labelTimerStarted) {
-        labelTimerStarted = true;
-        setTimeout(() => {
-          labelTimerElapsed = true;
-        }, 3000);
       }
     }
 
     gradients.redDot = ctx.createLinearGradient(0, 0, 0, H);
     gradients.redDot.addColorStop(0, RED);
     gradients.redDot.addColorStop(1, RED_LIGHT);
-
-    gradients.rings = {
-      default: createRingGradient(RED, RED_LIGHT),
-      kakao: createRingGradient('#3B1E1E', '#5B3E3E'),
-      hanmail: createRingGradient('#0078D4', '#3399FF')
-    };
-
-    if (!hoverHandler) {
-      hoverHandler = e => {
-        const x = e.offsetX;
-        const y = e.offsetY;
-        let glowActive = false;
-        dots.forEach(dot => {
-          if (dot.isRed) {
-            const dist = Math.hypot(dot.x - x, dot.y - y);
-            dot.glow = dist < SP * 3;
-            if (dot.glow) glowActive = true;
-          }
-        });
-        canvas.style.cursor = glowActive ? 'pointer' : 'default';
-      };
-      canvas.addEventListener('mousemove', hoverHandler);
-    }
   }
-
-  function createDotGradient(dot) {
-    const grad = ctx.createLinearGradient(
-      dot.x + Math.cos(dot.angle) * dot.baseR,
-      dot.y + Math.sin(dot.angle) * dot.baseR,
-      dot.x - Math.cos(dot.angle) * dot.baseR,
-      dot.y - Math.sin(dot.angle) * dot.baseR
-    );
-    grad.addColorStop(0, RED);
-    grad.addColorStop(1, RED_LIGHT);
-    return grad;
-  }
-
-  function createRingGradient(c1, c2) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, c1);
-    gradient.addColorStop(1, c2);
-    return gradient;
-  }
-
-  // (이하 drawFrame, click handler 등은 이전 최종 코드와 동일)
-  // 필요하면 이어서 붙여 드리겠습니다.
-  // space 제약으로 여기에 drawFrame 이하 생략합니다.
 
   resizeCanvas();
-  requestAnimationFrame(() => {});
 };
 </script>
 </body>
