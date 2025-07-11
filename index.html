@@ -29,36 +29,26 @@
 <canvas id="halftoneCanvas"></canvas>
 <script>
 window.onload = () => {
-  /*** Constants ***/
   const RED = '#FF4D4F';
   const RED_LIGHT = '#FF7875';
   const BLUE_TINT = 150;
   const BACKGROUND = '#FAFAFA';
   const FADE_SPEED = 0.02;
   const CLICK_SOUND_FREQ = 440;
-  const RING_COLORS = {
-    kakao: '#3B1E1E',
-    hanmail: '#0078D4',
-    default: RED
-  };
 
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
 
-  let W, H;
-  let dots = [];
-  let backgroundDots = [];
-  let MAX_R;
-  let SP;
-  let fontSize = 0;
-  let visibleDots = 0;
-  let gradients = {};
+  let W, H, SP, MAX_R, fontSize;
+  let dots = [], backgroundDots = [];
   let started = false;
   let labelTimerStarted = false;
   let labelTimerElapsed = false;
   let rings = [];
+  let visibleDots = 0;
   let initialMessageAlpha = 1.0;
   let initialMessageFading = false;
+  let gradients = {};
   let hoverHandler;
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -97,13 +87,9 @@ window.onload = () => {
       }
     }
 
-    const mGradient = octx.createLinearGradient(0, 0, W, H);
-    mGradient.addColorStop(0, RED);
-    mGradient.addColorStop(1, RED_LIGHT);
-
     octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
-    octx.fillStyle = mGradient;
+    octx.fillStyle = '#000';
     octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
@@ -118,10 +104,9 @@ window.onload = () => {
         const brightness = data[idx] / 255;
 
         let baseR;
-        let isText = false;
-        if (brightness < 0.9) {
+        let isText = brightness < 0.9;
+        if (isText) {
           baseR = MAX_R * (1 - brightness);
-          isText = true;
         } else {
           baseR = grad * MAX_R * 0.4;
         }
@@ -130,23 +115,16 @@ window.onload = () => {
 
         const speed = isText ? 1.0 : 0.2;
 
-        const dot = {
-          x,
-          y,
-          baseR,
-          currentR: baseR,
-          isText,
-          isRed: false,
-          glow: false,
-          label: '',
+        dots.push({
+          x, y, baseR, currentR: baseR,
+          isText, isRed: false,
+          glow: false, label: '',
           phase: Math.random() * Math.PI * 2,
-          speed,
-          labelAlpha: 0,
+          speed, labelAlpha: 0,
           visible: false
-        };
+        });
 
-        dots.push(dot);
-        if (!isText) backgroundDots.push(dot);
+        if (!isText) backgroundDots.push(dots[dots.length - 1]);
       }
     }
 
@@ -334,9 +312,7 @@ window.onload = () => {
     ctx.fillStyle = BACKGROUND;
     ctx.fillRect(0, 0, W, H);
 
-    if (visibleDots < dots.length) {
-      visibleDots += 50;
-    }
+    if (visibleDots < dots.length) visibleDots += 50;
 
     dots.forEach((dot, i) => {
       if (i > visibleDots) return;
@@ -355,14 +331,16 @@ window.onload = () => {
       ctx.beginPath();
       ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
 
-      if (!dot.isRed) {
+      if (dot.isText) {
+        ctx.fillStyle = gradients.redDot;
+      } else {
         const randomTint = Math.round(Math.random() * 30);
         let gray = Math.round(gradVal * 255);
         ctx.fillStyle = `rgb(${gray + randomTint}, ${gray + randomTint}, ${gray + BLUE_TINT})`;
-      } else {
-        ctx.fillStyle = dot.glow
-          ? 'rgba(255,77,79,0.8)'
-          : gradients.redDot;
+      }
+
+      if (dot.isRed) {
+        ctx.fillStyle = dot.glow ? 'rgba(255,77,79,0.8)' : gradients.redDot;
       }
 
       if (dot.glow) {
@@ -394,16 +372,13 @@ window.onload = () => {
         if (dot.label.length > 15) {
           ctx.fillText(dot.label.substring(15), labelX, labelY + 16);
         }
-
         ctx.globalAlpha = 1.0;
       }
 
-      if (dot.isRed && started) {
-        if (labelTimerElapsed) {
-          if (dot.labelAlpha < 1.0) {
-            dot.labelAlpha += 0.03;
-            if (dot.labelAlpha > 1.0) dot.labelAlpha = 1.0;
-          }
+      if (dot.isRed && started && labelTimerElapsed) {
+        if (dot.labelAlpha < 1.0) {
+          dot.labelAlpha += 0.03;
+          if (dot.labelAlpha > 1.0) dot.labelAlpha = 1.0;
         }
       }
     });
@@ -425,7 +400,6 @@ window.onload = () => {
       ring.radius += 2;
       ring.opacity -= ring.fadeSpeed;
     });
-
     rings = rings.filter(r => r.opacity > 0);
 
     if (!started || (initialMessageAlpha > 0 && initialMessageFading)) {
