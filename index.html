@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone Safe Margin</title>
+  <title>M Halftone - Final Safe Margin Fix</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
       width: 100%;
@@ -16,42 +16,55 @@
       font-family: 'Pretendard', sans-serif;
     }
     canvas {
-      width: 100vw;
-      height: 100vh;
       display: block;
       touch-action: none;
-      cursor: pointer;
+    }
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      font-family: 'Pretendard', sans-serif;
+      font-size: 14px;
+      z-index: 9999;
     }
   </style>
 </head>
 <body>
 <canvas id="halftoneCanvas"></canvas>
+<div id="toast"></div>
+
 <script>
-window.onload = () => {
+document.addEventListener("DOMContentLoaded", () => {
   const RED = '#FF4D4F';
   const RED_LIGHT = '#FF7875';
   const BLUE_TINT = 150;
   const BACKGROUND = '#FAFAFA';
-  const FADE_SPEED = 0.02;
   const CLICK_SOUND_FREQ = 440;
-  const DOT_FILL_SPEED = 100;
+  const DOT_FILL_SPEED = 150;
   const RED_DOT_SCALE = 10;
   const MIN_TAP_RADIUS = 40;
 
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
+  const toast = document.getElementById('toast');
 
   let W, H, SP, MAX_R, fontSize;
   let dots = [], backgroundDots = [];
   let started = false;
-  let labelTimerStarted = false;
-  let labelTimerElapsed = false;
-  let rings = [];
+  let gradients = {};
   let visibleDots = 0;
   let initialMessageAlpha = 1.0;
   let initialMessageFading = false;
-  let gradients = {};
-  let hoverHandler;
+  let labelTimerStarted = false;
+  let labelTimerElapsed = false;
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -59,82 +72,89 @@ window.onload = () => {
     return Math.min(Math.max(val, min), max);
   }
 
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    W = canvas.width;
-    H = canvas.height;
-    SP = Math.max(3, Math.floor(W / 200));
-    initDots(false);
+  function showToast(message) {
+    toast.textContent = message;
+    toast.style.opacity = 1;
+    setTimeout(() => {
+      toast.style.opacity = 0;
+    }, 2000);
   }
 
-  window.addEventListener('resize', resizeCanvas);
+  function resizeCanvas() {
+    const ratio = window.devicePixelRatio || 1;
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    canvas.width = window.innerWidth * ratio;
+    canvas.height = vh * ratio;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = vh + "px";
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(ratio, ratio);
 
-  function initDots(addRedDots) {
+    W = window.innerWidth;
+    H = vh;
+    SP = Math.max(3, Math.floor(W / 200));
+    initDots(false, ratio);
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+
+  function initDots(addRedDots, ratio) {
     MAX_R = (SP / 2) * 1.5;
     dots = [];
     backgroundDots = [];
     visibleDots = 0;
 
     const text = 'M';
-    fontSize = Math.min(W, H) * 0.4;
+    fontSize = W * 0.3;
+    const centerShift = H * 0.1;
 
     const off = document.createElement('canvas');
-    off.width = W;
-    off.height = H;
+    off.width = W * ratio;
+    off.height = H * ratio;
     const octx = off.getContext('2d');
 
-    let textWidth = Infinity;
-    while (textWidth > W - 4 && fontSize > 10) {
-      octx.font = `${fontSize}px Pretendard, sans-serif`;
-      textWidth = octx.measureText(text).width;
-      if (textWidth > W - 4) {
-        fontSize -= 10;
-      }
-    }
-
-    octx.fillStyle = BACKGROUND;
+    octx.scale(ratio, ratio);
+    octx.fillStyle = '#fff';
     octx.fillRect(0, 0, W, H);
+
     octx.fillStyle = '#000';
     octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(text, W / 2, H / 2);
+    octx.fillText(text, W/2, H/2 + centerShift);
 
-    const data = octx.getImageData(0, 0, W, H).data;
+    const imgData = octx.getImageData(0, 0, W * ratio, H * ratio).data;
 
     for (let y = 0; y < H; y += SP) {
-      const grad = y / H;
       for (let x = 0; x < W; x += SP) {
-        const idx = (y * W + x) * 4;
-        const brightness = data[idx] / 255;
+        const sampleX = x + SP / 2;
+        const sampleY = y + SP / 2;
+        const px = Math.floor(sampleX * ratio);
+        const py = Math.floor(sampleY * ratio);
+        const idx = (py * (W * ratio) + px) * 4;
 
-        let baseR;
-        let isText = brightness < 0.9;
-        if (isText) {
-          baseR = MAX_R * (1 - brightness);
-        } else {
-          baseR = grad * MAX_R * 0.4;
-        }
+        const brightness = imgData[idx] / 255;
+        const isText = brightness < 0.9;
+
+        let baseR = isText
+          ? MAX_R * (1 - brightness)
+          : (y / H) * MAX_R * 0.4;
 
         if (baseR < 0.3) baseR = 0.3;
 
-        const speed = isText ? 1.0 : 0.2;
-
-        const dot = {
-          x, y, baseR, currentR: baseR,
+        dots.push({
+          x, y,
+          baseR, currentR: baseR,
           isText, isRed: false,
-          glow: false, label: '',
-          phase: Math.random() * Math.PI * 2,
-          speed, labelAlpha: 0,
-          visible: false,
+          label: '',
+          glow: false,
           alpha: 0,
-          randomTint: Math.round(Math.random() * 30),
-          angle: Math.random() * 2 * Math.PI,
-        };
+          phase: Math.random() * Math.PI * 2,
+          speed: isText ? 1.0 : 0.2,
+          randomTint: Math.round(Math.random() * 30)
+        });
 
-        dots.push(dot);
-        if (!isText) backgroundDots.push(dot);
+        if (!isText) backgroundDots.push(dots[dots.length - 1]);
       }
     }
 
@@ -146,28 +166,44 @@ window.onload = () => {
       ];
 
       const centerX = W / 2;
-      const centerY = H / 2;
-      const MIN_RADIUS = 200;
-      const MAX_RADIUS = 400;
-      const MIN_DISTANCE = 150;
+      const centerY = H / 2 + centerShift;
+
+      const MIN_RADIUS = Math.min(W, H) * 0.2;
+      const MAX_RADIUS = Math.min(W, H) * 0.4;
+      const MIN_DISTANCE = Math.min(W, H) * 0.2;
 
       const positions = [];
 
-      for (let i = 0; i < labels.length; i++) {
+      for (let labelText of labels) {
         let attempt = 0;
         let found = false;
 
-        const labelText = labels[i];
         const labelFontSize = Math.max(12, Math.min(16, W * 0.02));
         ctx.font = `${labelFontSize}px Pretendard, sans-serif`;
         const labelWidth = ctx.measureText(labelText).width;
 
-        const safeMarginX = (RED_DOT_SCALE * MAX_R) + labelWidth/2 + 10;
-        const safeMarginY = (RED_DOT_SCALE * MAX_R) + 20;
+        const dotWidth = RED_DOT_SCALE * MAX_R * 2;
+        const labelMarginX = labelWidth / 2 + 10;
+        let safeMarginX = dotWidth + labelMarginX;
+
+        safeMarginX = Math.max(safeMarginX, W * 0.1);
+        safeMarginX = Math.min(safeMarginX, W * 0.25);
+
+        const dotHeight = RED_DOT_SCALE * MAX_R * 2;
+        const labelMarginY = 20;
+        let safeMarginY = dotHeight + labelMarginY;
+
+        safeMarginY = Math.max(safeMarginY, H * 0.1);
+        safeMarginY = Math.min(safeMarginY, H * 0.25);
+
+        if (safeMarginX * 2 >= W || safeMarginY * 2 >= H) {
+          console.warn("화면이 너무 작아 red dot 배치가 불가능합니다.");
+          continue;
+        }
 
         while (!found && attempt < 2000) {
           attempt++;
-          const angle = Math.random() * 2 * Math.PI;
+          const angle = -Math.PI/2 + Math.random() * Math.PI;
           const distance = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
 
           let newX = centerX + distance * Math.cos(angle);
@@ -177,10 +213,8 @@ window.onload = () => {
           newY = clamp(newY, safeMarginY, H - safeMarginY);
 
           let conflict = false;
-          for (let j = 0; j < positions.length; j++) {
-            const prev = positions[j];
-            const dist = Math.hypot(newX - prev.x, newY - prev.y);
-            if (dist < MIN_DISTANCE) {
+          for (let pos of positions) {
+            if (Math.hypot(newX - pos.x, newY - pos.y) < MIN_DISTANCE) {
               conflict = true;
               break;
             }
@@ -194,7 +228,7 @@ window.onload = () => {
 
         if (!found) {
           console.warn("Cannot place dot without conflict. Placing at center.");
-          positions.push({ x: centerX, y: centerY, label: labels[i] });
+          positions.push({ x: centerX, y: centerY, label: labelText });
         }
       }
 
@@ -205,72 +239,158 @@ window.onload = () => {
         dot.isRed = true;
         dot.label = positions[i].label;
         dot.baseR *= RED_DOT_SCALE;
-
-        dot.gradient = createDotGradient(dot);
-      }
-
-      if (!labelTimerStarted) {
-        labelTimerStarted = true;
-        setTimeout(() => {
-          labelTimerElapsed = true;
-        }, 3000);
       }
     }
 
     gradients.redDot = ctx.createLinearGradient(0, 0, 0, H);
     gradients.redDot.addColorStop(0, RED);
     gradients.redDot.addColorStop(1, RED_LIGHT);
+  }
 
-    gradients.rings = {
-      default: createRingGradient(RED, RED_LIGHT),
-      kakao: createRingGradient('#3B1E1E', '#5B3E3E'),
-      hanmail: createRingGradient('#0078D4', '#3399FF')
-    };
+  function playClickSound(freq) {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  }
 
-    if (!hoverHandler) {
-      hoverHandler = e => {
-        const x = e.offsetX;
-        const y = e.offsetY;
-        let glowActive = false;
-        dots.forEach(dot => {
-          if (dot.isRed) {
-            const dist = Math.hypot(dot.x - x, dot.y - y);
-            dot.glow = dist < SP * 3;
-            if (dot.glow) glowActive = true;
-          }
-        });
-        canvas.style.cursor = glowActive ? 'pointer' : 'default';
-      };
-      canvas.addEventListener('mousemove', hoverHandler);
+  function handleTap(clientX, clientY) {
+    if (!started) {
+      started = true;
+      initialMessageFading = true;
+      const ratio = window.devicePixelRatio || 1;
+      initDots(true, ratio);
+      playClickSound(CLICK_SOUND_FREQ);
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
+
+    let clickedDot = null;
+    for (let dot of dots) {
+      if (dot.isRed) {
+        const dist = Math.hypot(dot.x - clickX, dot.y - clickY);
+        const minTapRadius = Math.max(MIN_TAP_RADIUS, dot.baseR * 1.2);
+        if (dist < minTapRadius) {
+          clickedDot = dot;
+          break;
+        }
+      }
+    }
+
+    if (clickedDot) {
+      showToast(`${clickedDot.label} 로 이동합니다.`);
+      setTimeout(() => {
+        if (clickedDot.label === '+821034405337') {
+          window.location.href = 'tel:+821034405337';
+        } else if (clickedDot.label === 'aajej@hanmail.net') {
+          window.location.href =
+            'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
+        } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
+          window.location.href = 'https://open.kakao.com/o/seDPpmGh';
+        }
+      }, 500);
     }
   }
 
-  function createDotGradient(dot) {
-    const grad = ctx.createLinearGradient(
-      dot.x + Math.cos(dot.angle) * dot.baseR,
-      dot.y + Math.sin(dot.angle) * dot.baseR,
-      dot.x - Math.cos(dot.angle) * dot.baseR,
-      dot.y - Math.sin(dot.angle) * dot.baseR
-    );
-    grad.addColorStop(0, RED);
-    grad.addColorStop(1, RED_LIGHT);
-    return grad;
-  }
+  canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleTap(touch.clientX, touch.clientY);
+  }, { passive: false });
 
-  function createRingGradient(c1, c2) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, c1);
-    gradient.addColorStop(1, c2);
-    return gradient;
-  }
+  canvas.addEventListener("click", e => {
+    handleTap(e.clientX, e.clientY);
+  });
 
-  // (이하 drawFrame, click handler 등은 이전 최종 코드와 동일)
-  // 필요하면 이어서 붙여 드리겠습니다.
-  // space 제약으로 여기에 drawFrame 이하 생략합니다.
+  function drawFrame(time) {
+    ctx.fillStyle = BACKGROUND;
+    ctx.fillRect(0, 0, W, H);
+
+    if (visibleDots < dots.length) {
+      visibleDots += DOT_FILL_SPEED;
+    }
+
+    dots.forEach((dot, i) => {
+      if (i > visibleDots) return;
+
+      dot.alpha = Math.min(dot.alpha + 0.02, 1);
+      ctx.globalAlpha = dot.alpha;
+
+      const t = time / 500 * dot.speed + dot.phase;
+      const scaleAnim = 0.5 + 0.5 * Math.sin(t);
+      let r = dot.baseR * scaleAnim;
+
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
+
+      if (dot.isRed || dot.isText) {
+        ctx.fillStyle = gradients.redDot;
+      } else {
+        let gradVal = dot.y / H;
+        gradVal += 0.05 * Math.sin(time / 1000 + dot.phase);
+        gradVal = clamp(gradVal, 0, 1);
+        let gray = Math.round(gradVal * 255);
+        ctx.fillStyle = `rgb(${gray + dot.randomTint}, ${gray + dot.randomTint}, ${gray + BLUE_TINT})`;
+      }
+
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      if (dot.isRed && dot.label && started && labelTimerElapsed) {
+        ctx.globalAlpha = dot.alpha;
+        const labelFontSize = Math.max(12, Math.min(16, W * 0.02));
+        ctx.font = `${labelFontSize}px Pretendard, sans-serif`;
+        ctx.textAlign = 'center';
+        const textWidth = ctx.measureText(dot.label).width;
+        const labelX = dot.x;
+        let labelY = dot.y - r - 10;
+        if (labelY - 14 < 0) {
+          labelY = dot.y + r + 20;
+        }
+
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(labelX - textWidth/2 - 4, labelY - 16, textWidth + 8, 20);
+
+        ctx.fillStyle = RED;
+        ctx.fillText(dot.label, labelX, labelY);
+      }
+    });
+
+    if (started && !labelTimerElapsed && !labelTimerStarted) {
+      labelTimerStarted = true;
+      setTimeout(() => {
+        labelTimerElapsed = true;
+      }, 3000);
+    }
+
+    if (!started || initialMessageAlpha > 0) {
+      ctx.globalAlpha = initialMessageAlpha;
+      ctx.fillStyle = RED;
+      const tapFontSize = Math.max(20, Math.min(W, H) * 0.05);
+      ctx.font = `bold ${tapFontSize}px Pretendard, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Tap the dots!', W / 2, H / 2 + fontSize / 2 + 40);
+      ctx.globalAlpha = 1.0;
+
+      if (initialMessageFading) {
+        initialMessageAlpha -= 0.02;
+        if (initialMessageAlpha < 0) initialMessageAlpha = 0;
+      }
+    }
+
+    requestAnimationFrame(drawFrame);
+  }
 
   resizeCanvas();
-  requestAnimationFrame(() => {});
-};
+  requestAnimationFrame(drawFrame);
+});
 </script>
 </body>
 </html>
