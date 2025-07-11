@@ -209,6 +209,12 @@ window.onload = () => {
     }
 
     if (clickedDot) {
+      // 클릭 순간 확대 효과
+      clickedDot.baseR *= 1.5;
+      setTimeout(() => {
+        clickedDot.baseR /= 1.5;
+      }, 200);
+
       rings.push({
         x: clickedDot.x,
         y: clickedDot.y,
@@ -250,7 +256,15 @@ window.onload = () => {
 
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
-        ctx.fillStyle = dot.isRed ? '#FF4D4F' : '#000';
+
+        if (!dot.isRed) {
+          let gradVal = dot.y / H;
+          let gray = Math.round(gradVal * 255);
+          ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+        } else {
+          ctx.fillStyle = '#FF4D4F';
+        }
+
         ctx.fill();
 
         if (dot.isRed && dot.labelAlpha > 0) {
@@ -299,11 +313,15 @@ window.onload = () => {
     }
 
     if (!started) {
-      ctx.fillStyle = '#333';
-      ctx.font = '32px sans-serif';
+      let tapFontSize = Math.max(20, Math.min(W, H) * 0.05);
+      ctx.fillStyle = '#FF4D4F';
+      ctx.font = `bold ${tapFontSize}px sans-serif`;
       ctx.textAlign = 'center';
-      const textY = H/2 + fontSize/2 + 40;
+      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowBlur = 4;
+      const textY = H / 2 + fontSize / 2 + 40;
       ctx.fillText('Tap the dots!', W / 2, textY);
+      ctx.shadowBlur = 0;
     }
 
     requestAnimationFrame(drawFrame);
