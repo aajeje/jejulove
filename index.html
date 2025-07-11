@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone Safe Margin</title>
+  <title>M Halftone Safe Margin Mobile</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     body, html {
@@ -16,18 +16,15 @@
       font-family: 'Pretendard', sans-serif;
     }
     canvas {
-      width: 100vw;
-      height: 100vh;
       display: block;
       touch-action: none;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
 <canvas id="halftoneCanvas"></canvas>
 <script>
-window.onload = () => {
+document.addEventListener("DOMContentLoaded", () => {
   const RED = '#FF4D4F';
   const RED_LIGHT = '#FF7875';
   const BLUE_TINT = 150;
@@ -44,26 +41,40 @@ window.onload = () => {
   let dots = [], backgroundDots = [];
   let started = false;
   let gradients = {};
+  let visibleDots = 0;
+  let initialMessageAlpha = 1.0;
+  let initialMessageFading = false;
+  let labelTimerStarted = false;
+  let labelTimerElapsed = false;
+  let rings = [];
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
   function clamp(val, min, max) {
     return Math.min(Math.max(val, min), max);
   }
 
   function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    W = canvas.width;
-    H = canvas.height;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * ratio;
+    canvas.height = window.innerHeight * ratio;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    W = window.innerWidth;
+    H = window.innerHeight;
     SP = Math.max(3, Math.floor(W / 200));
     initDots(false);
   }
 
-  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener("resize", resizeCanvas);
 
   function initDots(addRedDots) {
     MAX_R = (SP / 2) * 1.5;
     dots = [];
     backgroundDots = [];
+    visibleDots = 0;
 
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
@@ -98,7 +109,8 @@ window.onload = () => {
           baseR, currentR: baseR,
           isText, isRed: false,
           label: '',
-          glow: false
+          glow: false,
+          alpha: 0
         });
 
         if (!isText) backgroundDots.push(dots[dots.length - 1]);
@@ -124,12 +136,10 @@ window.onload = () => {
         let attempt = 0;
         let found = false;
 
-        // label width 측정
         const labelFontSize = Math.max(12, Math.min(16, W * 0.02));
         ctx.font = `${labelFontSize}px Pretendard, sans-serif`;
         const labelWidth = ctx.measureText(labelText).width;
 
-        // 화면 크기의 일정 비율로 safe margin 상한 설정
         const maxSafeMarginX = W * 0.2;
         const maxSafeMarginY = H * 0.2;
 
@@ -190,8 +200,70 @@ window.onload = () => {
     gradients.redDot.addColorStop(1, RED_LIGHT);
   }
 
+  function playClickSound(freq) {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  }
+
+  function handleTap(clientX, clientY) {
+    if (!started) {
+      started = true;
+      initialMessageFading = true;
+      initDots(true);
+      playClickSound(CLICK_SOUND_FREQ);
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
+
+    let clickedDot = null;
+    for (let dot of dots) {
+      if (dot.isRed) {
+        const dist = Math.hypot(dot.x - clickX, dot.y - clickY);
+        const minTapRadius = Math.max(MIN_TAP_RADIUS, dot.baseR * 1.2);
+        if (dist < minTapRadius) {
+          clickedDot = dot;
+          break;
+        }
+      }
+    }
+
+    if (clickedDot) {
+      alert(`${clickedDot.label} 로 이동합니다.`);
+
+      if (clickedDot.label === '+821034405337') {
+        window.location.href = 'tel:+821034405337';
+      } else if (clickedDot.label === 'aajej@hanmail.net') {
+        window.location.href =
+          'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
+      } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
+        window.location.href = 'https://open.kakao.com/o/seDPpmGh';
+      }
+    }
+  }
+
+  // 모바일 터치
+  canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleTap(touch.clientX, touch.clientY);
+  }, { passive: false });
+
+  // PC 클릭
+  canvas.addEventListener("click", e => {
+    handleTap(e.clientX, e.clientY);
+  });
+
   resizeCanvas();
-};
+});
 </script>
 </body>
 </html>
