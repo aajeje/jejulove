@@ -36,7 +36,7 @@ window.onload = () => {
   const FADE_SPEED = 0.02;
   const CLICK_SOUND_FREQ = 440;
   const DOT_FILL_SPEED = 100;
-  const RED_DOT_SCALE = 10;  // ← red dot 크기 배율 (원래 6 → 10)
+  const RED_DOT_SCALE = 10;
 
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
@@ -185,7 +185,7 @@ window.onload = () => {
         dot.y = positions[i].y;
         dot.isRed = true;
         dot.label = positions[i].label;
-        dot.baseR *= RED_DOT_SCALE; // ← red dot 크기 배율 적용
+        dot.baseR *= RED_DOT_SCALE;
       }
 
       if (!labelTimerStarted) {
@@ -248,7 +248,7 @@ window.onload = () => {
     for (let dot of dots) {
       if (dot.isRed) {
         const dist = Math.hypot(dot.x - clickX, dot.y - clickY);
-        if (dist < SP * 2) {
+        if (dist < dot.baseR * 1.2) {
           clickedDot = dot;
           break;
         }
