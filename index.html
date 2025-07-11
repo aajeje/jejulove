@@ -40,7 +40,7 @@ window.onload = () => {
   let dots = [];
   let backgroundDots = [];
   const SP = 4;
-  let W, H, MAX_R, margin;
+  let W, H, MAX_R;
 
   let labelTimerStarted = false;
   let labelTimerElapsed = false;
@@ -49,7 +49,6 @@ window.onload = () => {
     W = canvas.width;
     H = canvas.height;
     MAX_R = (SP / 2) * 1.5;
-    margin = MAX_R + 2;
 
     dots = [];
     backgroundDots = [];
@@ -63,10 +62,10 @@ window.onload = () => {
     const octx = off.getContext('2d');
 
     let textWidth = Infinity;
-    while (textWidth > W - margin * 2 && fontSize > 10) {
+    while (textWidth > W - 4 && fontSize > 10) {
       octx.font = `${fontSize}px sans-serif`;
       textWidth = octx.measureText(text).width;
-      if (textWidth > W - margin * 2) {
+      if (textWidth > W - 4) {
         fontSize -= 10;
       }
     }
@@ -81,9 +80,9 @@ window.onload = () => {
 
     const data = octx.getImageData(0, 0, W, H).data;
 
-    for (let y = margin; y < H - margin; y += SP) {
+    for (let y = 0; y < H; y += SP) {
       const grad = y / H;
-      for (let x = margin; x < W - margin; x += SP) {
+      for (let x = 0; x < W; x += SP) {
         const idx = (y * W + x) * 4;
         const brightness = data[idx] / 255;
 
@@ -95,7 +94,9 @@ window.onload = () => {
         } else {
           baseR = grad * MAX_R * 0.4;
         }
-        if (baseR < 0.3) continue;
+
+        // ✅ 최소 반지름 보장
+        if (baseR < 0.3) baseR = 0.3;
 
         const dot = {
           x,
