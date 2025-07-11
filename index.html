@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone Safe Margin Mobile</title>
+  <title>M Halftone Mobile Complete</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     body, html {
@@ -110,7 +110,10 @@ document.addEventListener("DOMContentLoaded", () => {
           isText, isRed: false,
           label: '',
           glow: false,
-          alpha: 0
+          alpha: 0,
+          phase: Math.random() * Math.PI * 2,
+          speed: isText ? 1.0 : 0.2,
+          randomTint: Math.round(Math.random() * 30)
         });
 
         if (!isText) backgroundDots.push(dots[dots.length - 1]);
@@ -250,19 +253,98 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 모바일 터치
   canvas.addEventListener("touchstart", e => {
     e.preventDefault();
     const touch = e.touches[0];
     handleTap(touch.clientX, touch.clientY);
   }, { passive: false });
 
-  // PC 클릭
   canvas.addEventListener("click", e => {
     handleTap(e.clientX, e.clientY);
   });
 
+  function drawFrame(time) {
+    ctx.fillStyle = BACKGROUND;
+    ctx.fillRect(0, 0, W, H);
+
+    if (visibleDots < dots.length) {
+      visibleDots += DOT_FILL_SPEED;
+    }
+
+    dots.forEach((dot, i) => {
+      if (i > visibleDots) return;
+
+      dot.alpha = Math.min(dot.alpha + 0.02, 1);
+      ctx.globalAlpha = dot.alpha;
+
+      const t = time / 500 * dot.speed + dot.phase;
+      const scaleAnim = 0.5 + 0.5 * Math.sin(t);
+      let r = dot.baseR * scaleAnim;
+
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
+
+      if (dot.isRed) {
+        ctx.fillStyle = gradients.redDot;
+      } else if (dot.isText) {
+        ctx.fillStyle = gradients.redDot;
+      } else {
+        let gradVal = dot.y / H;
+        gradVal += 0.05 * Math.sin(time / 1000 + dot.phase);
+        gradVal = Math.max(0, Math.min(1, gradVal));
+
+        let gray = Math.round(gradVal * 255);
+        ctx.fillStyle = `rgb(${gray + dot.randomTint}, ${gray + dot.randomTint}, ${gray + BLUE_TINT})`;
+      }
+
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      if (dot.isRed && dot.label && started && labelTimerElapsed) {
+        ctx.globalAlpha = dot.alpha;
+        const labelFontSize = Math.max(12, Math.min(16, W * 0.02));
+        ctx.font = `${labelFontSize}px Pretendard, sans-serif`;
+        ctx.textAlign = 'center';
+        const textWidth = ctx.measureText(dot.label).width;
+        const labelX = dot.x;
+        let labelY = dot.y - r - 10;
+        if (labelY < 0) labelY = dot.y + r + 20;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(labelX - textWidth/2 - 4, labelY - 16, textWidth + 8, 20);
+
+        ctx.fillStyle = RED;
+        ctx.fillText(dot.label, labelX, labelY);
+      }
+    });
+
+    if (started && !labelTimerElapsed && !labelTimerStarted) {
+      labelTimerStarted = true;
+      setTimeout(() => {
+        labelTimerElapsed = true;
+      }, 3000);
+    }
+
+    if (!started || initialMessageAlpha > 0) {
+      ctx.globalAlpha = initialMessageAlpha;
+      ctx.fillStyle = RED;
+      const tapFontSize = Math.max(20, Math.min(W, H) * 0.05);
+      ctx.font = `bold ${tapFontSize}px Pretendard, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Tap the dots!', W / 2, H / 2 + fontSize / 2 + 40);
+      ctx.globalAlpha = 1.0;
+
+      if (initialMessageFading) {
+        initialMessageAlpha -= 0.02;
+        if (initialMessageAlpha < 0) initialMessageAlpha = 0;
+      }
+    }
+
+    requestAnimationFrame(drawFrame);
+  }
+
   resizeCanvas();
+  requestAnimationFrame(drawFrame);
 });
 </script>
 </body>
