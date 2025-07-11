@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone with Timed Labels</title>
+  <title>M Halftone Improved</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
-
     body, html {
       margin: 0;
       padding: 0;
@@ -37,6 +36,7 @@ window.onload = () => {
   const CLICK_SOUND_FREQ = 440;
   const DOT_FILL_SPEED = 100;
   const RED_DOT_SCALE = 10;
+  const MIN_TAP_RADIUS = 40;
 
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
@@ -117,16 +117,20 @@ window.onload = () => {
 
         const speed = isText ? 1.0 : 0.2;
 
-        dots.push({
+        const dot = {
           x, y, baseR, currentR: baseR,
           isText, isRed: false,
           glow: false, label: '',
           phase: Math.random() * Math.PI * 2,
           speed, labelAlpha: 0,
-          visible: false
-        });
+          visible: false,
+          alpha: 0,
+          randomTint: Math.round(Math.random() * 30),
+          angle: Math.random() * 2 * Math.PI,
+        };
 
-        if (!isText) backgroundDots.push(dots[dots.length - 1]);
+        dots.push(dot);
+        if (!isText) backgroundDots.push(dot);
       }
     }
 
@@ -186,6 +190,8 @@ window.onload = () => {
         dot.isRed = true;
         dot.label = positions[i].label;
         dot.baseR *= RED_DOT_SCALE;
+
+        dot.gradient = createDotGradient(dot);
       }
 
       if (!labelTimerStarted) {
@@ -224,6 +230,18 @@ window.onload = () => {
     }
   }
 
+  function createDotGradient(dot) {
+    const grad = ctx.createLinearGradient(
+      dot.x + Math.cos(dot.angle) * dot.baseR,
+      dot.y + Math.sin(dot.angle) * dot.baseR,
+      dot.x - Math.cos(dot.angle) * dot.baseR,
+      dot.y - Math.sin(dot.angle) * dot.baseR
+    );
+    grad.addColorStop(0, RED);
+    grad.addColorStop(1, RED_LIGHT);
+    return grad;
+  }
+
   function createRingGradient(c1, c2) {
     const gradient = ctx.createLinearGradient(0, 0, 0, H);
     gradient.addColorStop(0, c1);
@@ -248,7 +266,8 @@ window.onload = () => {
     for (let dot of dots) {
       if (dot.isRed) {
         const dist = Math.hypot(dot.x - clickX, dot.y - clickY);
-        if (dist < dot.baseR * 1.2) {
+        const minTapRadius = Math.max(MIN_TAP_RADIUS, dot.baseR * 1.2);
+        if (dist < minTapRadius) {
           clickedDot = dot;
           break;
         }
@@ -328,7 +347,11 @@ window.onload = () => {
       gradVal += 0.05 * Math.sin(time / 1000 + dot.phase);
       gradVal = Math.max(0, Math.min(1, gradVal));
 
+      if (dot.alpha < 1) dot.alpha += 0.02;
+
       if (r < 0.3) return;
+
+      ctx.globalAlpha = dot.alpha;
 
       ctx.beginPath();
       ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
@@ -336,23 +359,24 @@ window.onload = () => {
       if (dot.isText) {
         ctx.fillStyle = gradients.redDot;
       } else {
-        const randomTint = Math.round(Math.random() * 30);
         let gray = Math.round(gradVal * 255);
-        ctx.fillStyle = `rgb(${gray + randomTint}, ${gray + randomTint}, ${gray + BLUE_TINT})`;
+        ctx.fillStyle = `rgb(${gray + dot.randomTint}, ${gray + dot.randomTint}, ${gray + BLUE_TINT})`;
       }
 
       if (dot.isRed) {
-        ctx.fillStyle = dot.glow ? 'rgba(255,77,79,0.8)' : gradients.redDot;
+        ctx.fillStyle = dot.glow ? 'rgba(255,77,79,0.8)' : dot.gradient;
       }
 
       if (dot.glow) {
+        const glowAnim = 10 + 10 * Math.sin(time / 200);
         ctx.shadowColor = 'rgba(255,77,79,0.6)';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = glowAnim;
       } else {
         ctx.shadowBlur = 0;
       }
 
       ctx.fill();
+      ctx.globalAlpha = 1.0;
 
       if (dot.isRed && dot.labelAlpha > 0) {
         ctx.globalAlpha = dot.labelAlpha;
@@ -367,7 +391,8 @@ window.onload = () => {
         if (labelY - 16 < 0) labelY = dot.y + r + 20;
 
         ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fillRect(labelX - textWidth/2 - 4, labelY - 16, textWidth + 8, 20);
+        roundRect(ctx, labelX - textWidth/2 - 4, labelY - 16, textWidth + 8, 20, 5);
+        ctx.fill();
 
         ctx.fillStyle = RED;
         ctx.fillText(dot.label, labelX, labelY);
@@ -409,6 +434,7 @@ window.onload = () => {
       gradient.addColorStop(1, RED_LIGHT);
       const textY = H/2 + fontSize/2 + 40;
       const scale = 1 + 0.05 * Math.sin(time / 200);
+      const xOffset = 5 * Math.sin(time / 100);
       ctx.setTransform(scale, 0, 0, scale, W/2 * (1 - scale), textY * (1 - scale));
       ctx.fillStyle = gradient;
       ctx.font = `bold ${tapFontSize}px Pretendard, sans-serif`;
@@ -416,10 +442,10 @@ window.onload = () => {
       ctx.shadowColor = 'rgba(0,0,0,0.2)';
       ctx.shadowBlur = 4;
       ctx.globalAlpha = initialMessageAlpha;
-      ctx.fillText('Tap the dots!', W / 2, textY);
+      ctx.fillText('Tap the dots!', W / 2 + xOffset, textY);
       ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.strokeText('Tap the dots!', W / 2, textY);
+      ctx.lineWidth = 3;
+      ctx.strokeText('Tap the dots!', W / 2 + xOffset, textY);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1.0;
 
@@ -430,6 +456,20 @@ window.onload = () => {
     }
 
     requestAnimationFrame(drawFrame);
+  }
+
+  function roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
   }
 
   resizeCanvas();
