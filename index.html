@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone DPR Complete</title>
+  <title>M Halftone DPR Fixed</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     body, html {
@@ -78,22 +78,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
 
-    // DPR 적용한 오프스크린 캔버스 생성
     const ratio = window.devicePixelRatio || 1;
     const off = document.createElement('canvas');
     off.width = W * ratio;
     off.height = H * ratio;
     const octx = off.getContext('2d');
-    octx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-    octx.fillStyle = '#FFF';
-    octx.fillRect(0, 0, W, H);
+    // no transform. draw at higher resolution directly
+    octx.fillStyle = '#fff';
+    octx.fillRect(0, 0, off.width, off.height);
 
     octx.fillStyle = '#000';
-    octx.font = `${fontSize}px Pretendard, sans-serif`;
+    octx.font = `${fontSize * ratio}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(text, W / 2, H / 2);
+    octx.fillText(text, (W * ratio) / 2, (H * ratio) / 2);
 
     const data = octx.getImageData(0, 0, W * ratio, H * ratio).data;
 
@@ -101,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
       for (let x = 0; x < W; x += SP) {
         const px = Math.floor(x * ratio);
         const py = Math.floor(y * ratio);
-        const idx = (py * W * ratio + px) * 4;
+        const idx = (py * (W * ratio) + px) * 4;
 
         const brightness = data[idx] / 255;
         const isText = brightness < 0.9;
