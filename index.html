@@ -110,7 +110,7 @@ window.onload = () => {
     fontSize = Math.min(W, H) * 0.4;
     const centerShift = 0; // ✅ centerShift 제거
 
-    // ✅ Offscreen canvas 최적화 (scaleDown 50%)
+    // ✅ Offscreen canvas 최적화 (scale 80%)
     const scaleDown = 0.8;
     const off = document.createElement('canvas');
     off.width = W * scaleDown;
