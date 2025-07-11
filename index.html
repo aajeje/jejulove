@@ -1,129 +1,138 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>M Halftone with Clickable Dots</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>M Halftone with Timed Labels</title>
   <style>
     body, html {
       margin: 0;
       padding: 0;
       width: 100%;
       height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       background: #fff;
+      overflow: hidden;
     }
     canvas {
-      border: 1px solid #ccc;
+      width: 100vw;
+      height: 100vh;
+      display: block;
       touch-action: none;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
-<canvas id="halftoneCanvas" width="400" height="600"></canvas>
+<canvas id="halftoneCanvas"></canvas>
 <script>
 window.onload = () => {
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const SP = 4;
-  const MAX_R = (SP / 2) * 1.5;
-  const margin = MAX_R + 2;
 
-  const text = 'M';
-  let fontSize = 150;
-
-  const off = document.createElement('canvas');
-  off.width = W;
-  off.height = H;
-  const octx = off.getContext('2d');
-
-  let textWidth = Infinity;
-  while (textWidth > W - margin * 2 && fontSize > 10) {
-    octx.font = `${fontSize}px sans-serif`;
-    textWidth = octx.measureText(text).width;
-    if (textWidth > W - margin * 2) {
-      fontSize -= 10;
-    }
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    initDots();
   }
 
-  octx.fillStyle = '#fff';
-  octx.fillRect(0, 0, W, H);
-  octx.fillStyle = '#000';
-  octx.font = `${fontSize}px sans-serif`;
-  octx.textAlign = 'center';
-  octx.textBaseline = 'middle';
-  octx.fillText(text, W / 2, H / 2);
-
-  const data = octx.getImageData(0, 0, W, H).data;
+  window.addEventListener('resize', resizeCanvas);
 
   let dots = [];
   let backgroundDots = [];
+  const SP = 4;
+  let W, H, MAX_R, margin;
 
-  for (let y = margin; y < H - margin; y += SP) {
-    const grad = y / H;
-    for (let x = margin; x < W - margin; x += SP) {
-      const idx = (y * W + x) * 4;
-      const brightness = data[idx] / 255;
+  let labelTimerStarted = false;
+  let labelTimerElapsed = false;
 
-      let baseR;
-      let isText = false;
-      if (brightness < 0.9) {
-        baseR = MAX_R * (1 - brightness);
-        isText = true;
-      } else {
-        baseR = grad * MAX_R * 0.4;
+  function initDots() {
+    W = canvas.width;
+    H = canvas.height;
+    MAX_R = (SP / 2) * 1.5;
+    margin = MAX_R + 2;
+
+    dots = [];
+    backgroundDots = [];
+
+    const text = 'M';
+    let fontSize = Math.min(W, H) * 0.4;
+
+    const off = document.createElement('canvas');
+    off.width = W;
+    off.height = H;
+    const octx = off.getContext('2d');
+
+    let textWidth = Infinity;
+    while (textWidth > W - margin * 2 && fontSize > 10) {
+      octx.font = `${fontSize}px sans-serif`;
+      textWidth = octx.measureText(text).width;
+      if (textWidth > W - margin * 2) {
+        fontSize -= 10;
       }
-      if (baseR < 0.3) continue;
+    }
 
-      const dot = {
-        x,
-        y,
-        baseR,
-        currentR: baseR,
-        isText,
-        isRed: false,
-        label: '',
-        phase: Math.random() * Math.PI * 2,
-        speed: 0.5 + Math.random() * 1.5,
-        labelAlpha: 0,
-        hovering: false,
-      };
+    octx.fillStyle = '#fff';
+    octx.fillRect(0, 0, W, H);
+    octx.fillStyle = '#000';
+    octx.font = `${fontSize}px sans-serif`;
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(text, W / 2, H / 2);
 
-      dots.push(dot);
-      if (!isText) backgroundDots.push(dot);
+    const data = octx.getImageData(0, 0, W, H).data;
+
+    for (let y = margin; y < H - margin; y += SP) {
+      const grad = y / H;
+      for (let x = margin; x < W - margin; x += SP) {
+        const idx = (y * W + x) * 4;
+        const brightness = data[idx] / 255;
+
+        let baseR;
+        let isText = false;
+        if (brightness < 0.9) {
+          baseR = MAX_R * (1 - brightness);
+          isText = true;
+        } else {
+          baseR = grad * MAX_R * 0.4;
+        }
+        if (baseR < 0.3) continue;
+
+        const dot = {
+          x,
+          y,
+          baseR,
+          currentR: baseR,
+          isText,
+          isRed: false,
+          label: '',
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.5 + Math.random() * 1.5,
+          labelAlpha: 0,
+        };
+
+        dots.push(dot);
+        if (!isText) backgroundDots.push(dot);
+      }
+    }
+
+    if (backgroundDots.length >= 2) {
+      const shuffled = backgroundDots.sort(() => 0.5 - Math.random());
+      shuffled[0].isRed = true;
+      shuffled[0].label = '+821034405337';
+      shuffled[0].baseR *= 6;
+
+      shuffled[1].isRed = true;
+      shuffled[1].label = 'aajej@hanmail.net';
+      shuffled[1].baseR *= 6;
+    }
+
+    if (!labelTimerStarted) {
+      labelTimerStarted = true;
+      setTimeout(() => {
+        labelTimerElapsed = true;
+      }, 3000);
     }
   }
-
-  if (backgroundDots.length >= 2) {
-    const shuffled = backgroundDots.sort(() => 0.5 - Math.random());
-    shuffled[0].isRed = true;
-    shuffled[0].label = '+821034405337';
-    shuffled[0].baseR *= 6;
-
-    shuffled[1].isRed = true;
-    shuffled[1].label = 'aajej@hanmail.net';
-    shuffled[1].baseR *= 6;
-  }
-
-  let hoverX = -999;
-  let hoverY = -999;
-
-  canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    hoverX = e.clientX - rect.left;
-    hoverY = e.clientY - rect.top;
-  });
-
-  canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    hoverX = touch.clientX - rect.left;
-    hoverY = touch.clientY - rect.top;
-  }, { passive: false });
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -154,27 +163,11 @@ window.onload = () => {
       const scaleAnim = 0.5 + 0.5 * Math.sin(t);
       let r = dot.baseR * scaleAnim;
 
-      const dist = Math.hypot(dot.x - hoverX, dot.y - hoverY);
-      let isHover = dist < SP;
-
-      if (isHover) {
-        r *= 2;
-      }
-
       if (dot.isRed) {
-        if (isHover) {
-          dot.hovering = true;
+        if (labelTimerElapsed) {
           if (dot.labelAlpha < 1.0) {
             dot.labelAlpha += 0.05;
             if (dot.labelAlpha > 1.0) dot.labelAlpha = 1.0;
-          }
-        } else {
-          if (dot.hovering) {
-            dot.labelAlpha -= 0.05;
-            if (dot.labelAlpha <= 0) {
-              dot.labelAlpha = 0;
-              dot.hovering = false;
-            }
           }
         }
       }
@@ -214,6 +207,7 @@ window.onload = () => {
     requestAnimationFrame(drawFrame);
   }
 
+  resizeCanvas();
   requestAnimationFrame(drawFrame);
 };
 </script>
