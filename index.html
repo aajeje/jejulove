@@ -84,17 +84,18 @@ document.addEventListener("DOMContentLoaded", () => {
     off.height = H * ratio;
     const octx = off.getContext('2d');
 
-    // no transform. draw at higher resolution directly
+    // scale instead of transform
+    octx.scale(ratio, ratio);
     octx.fillStyle = '#fff';
-    octx.fillRect(0, 0, off.width, off.height);
+    octx.fillRect(0, 0, W, H);
 
     octx.fillStyle = '#000';
-    octx.font = `${fontSize * ratio}px Pretendard, sans-serif`;
+    octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(text, (W * ratio) / 2, (H * ratio) / 2);
+    octx.fillText(text, W/2, H/2);
 
-    const data = octx.getImageData(0, 0, W * ratio, H * ratio).data;
+    const imgData = octx.getImageData(0, 0, W * ratio, H * ratio).data;
 
     for (let y = 0; y < H; y += SP) {
       for (let x = 0; x < W; x += SP) {
@@ -102,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const py = Math.floor(y * ratio);
         const idx = (py * (W * ratio) + px) * 4;
 
-        const brightness = data[idx] / 255;
+        const brightness = imgData[idx] / 255;
         const isText = brightness < 0.9;
 
         let baseR = isText
