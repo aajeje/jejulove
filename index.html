@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone - Ultimate UX</title>
+  <title>M Halftone with Timed Labels - Final Fixed</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -54,10 +54,10 @@ window.onload = () => {
   const BLUE_TINT = 150;
   const BACKGROUND = '#FAFAFA';
   const FADE_SPEED = 0.02;
+  const CLICK_SOUND_FREQ = 440;
   const DOT_FILL_SPEED = 100;
   const RED_DOT_SCALE = 10;
   const TAP_RADIUS_MOBILE = 50;
-  const MIN_TAP_RADIUS = 40;
 
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
@@ -114,6 +114,7 @@ window.onload = () => {
     off.width = W;
     off.height = H;
     const octx = off.getContext('2d');
+
     octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
@@ -266,21 +267,20 @@ window.onload = () => {
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
 
-      let freq = clickedDot.label.includes("kakao") ? 600 :
-                 clickedDot.label.includes("hanmail") ? 300 :
-                 CLICK_SOUND_FREQ;
-      playClickSound(freq);
+      playClickSound(CLICK_SOUND_FREQ);
 
-      setTimeout(() => {
-        if (clickedDot.label === '+821034405337') {
+      if (clickedDot.label === '+821034405337') {
+        if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
           window.location.href = 'tel:+821034405337';
-        } else if (clickedDot.label === 'aajej@hanmail.net') {
-          window.location.href =
-            'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
-        } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
-          window.location.href = 'https://open.kakao.com/o/seDPpmGh';
+        } else {
+          showToast('전화 연결은 모바일에서만 가능합니다.');
         }
-      }, 500);
+      } else if (clickedDot.label === 'aajej@hanmail.net') {
+        window.location.href =
+          'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
+      } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
+        window.open('https://open.kakao.com/o/seDPpmGh', '_blank');
+      }
     }
   });
 
@@ -322,12 +322,6 @@ window.onload = () => {
         ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + BLUE_TINT})`;
       }
 
-      if (dot.glow) {
-        ctx.shadowColor = 'rgba(255,77,79,0.6)';
-        ctx.shadowBlur = 20;
-      } else {
-        ctx.shadowBlur = 0;
-      }
       ctx.fill();
 
       if (dot.isRed && dot.labelAlpha > 0) {
