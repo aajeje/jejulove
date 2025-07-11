@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>M Halftone with Timed Labels</title>
   <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
+
     body, html {
       margin: 0;
       padding: 0;
@@ -12,6 +14,7 @@
       height: 100%;
       background: #FAFAFA;
       overflow: hidden;
+      font-family: 'Pretendard', sans-serif;
     }
     canvas {
       width: 100vw;
@@ -26,13 +29,18 @@
 <canvas id="halftoneCanvas"></canvas>
 <script>
 window.onload = () => {
+  const RED = '#FF4D4F';
+  const RED_LIGHT = '#FF7875';
+  const BLUE_TINT = 150;
+  const BACKGROUND = '#FAFAFA';
+  const SP = 6;
+
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
 
   let W, H;
   let dots = [];
   let backgroundDots = [];
-  const SP = 4;
   let MAX_R;
   let fontSize = 0;
 
@@ -40,6 +48,11 @@ window.onload = () => {
   let labelTimerStarted = false;
   let labelTimerElapsed = false;
   let rings = [];
+
+  let initialMessageAlpha = 1.0;
+  let initialMessageFading = false;
+
+  let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -66,17 +79,17 @@ window.onload = () => {
 
     let textWidth = Infinity;
     while (textWidth > W - 4 && fontSize > 10) {
-      octx.font = `${fontSize}px sans-serif`;
+      octx.font = `${fontSize}px Pretendard, sans-serif`;
       textWidth = octx.measureText(text).width;
       if (textWidth > W - 4) {
         fontSize -= 10;
       }
     }
 
-    octx.fillStyle = '#FAFAFA';
+    octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
-    octx.font = `${fontSize}px sans-serif`;
+    octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     octx.fillText(text, W / 2, H / 2);
@@ -100,6 +113,8 @@ window.onload = () => {
 
         if (baseR < 0.3) baseR = 0.3;
 
+        const speed = isText ? 1.0 : 0.2;
+
         const dot = {
           x,
           y,
@@ -107,9 +122,10 @@ window.onload = () => {
           currentR: baseR,
           isText,
           isRed: false,
+          glow: false,
           label: '',
           phase: Math.random() * Math.PI * 2,
-          speed: 0.5 + Math.random() * 1.5,
+          speed,
           labelAlpha: 0,
         };
 
@@ -129,7 +145,7 @@ window.onload = () => {
       const centerY = H / 2;
       const MIN_RADIUS = 200;
       const MAX_RADIUS = 400;
-      const MIN_DISTANCE = 250;
+      const MIN_DISTANCE = 150;
 
       const positions = [];
 
@@ -188,6 +204,7 @@ window.onload = () => {
   canvas.addEventListener('click', (e) => {
     if (!started) {
       started = true;
+      initialMessageFading = true;
       initDots(true);
       return;
     }
@@ -209,10 +226,11 @@ window.onload = () => {
     }
 
     if (clickedDot) {
-      // 클릭 순간 확대 효과
       clickedDot.baseR *= 1.5;
+      clickedDot.glow = true;
       setTimeout(() => {
         clickedDot.baseR /= 1.5;
+        clickedDot.glow = false;
       }, 200);
 
       rings.push({
@@ -221,6 +239,16 @@ window.onload = () => {
         radius: 0,
         opacity: 1.0
       });
+
+      // Play click sound
+      let osc = audioCtx.createOscillator();
+      let gainNode = audioCtx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
 
       if (clickedDot.label === '+821034405337') {
         window.location.href = 'tel:+821034405337';
@@ -234,7 +262,7 @@ window.onload = () => {
   });
 
   function drawFrame(time) {
-    ctx.fillStyle = '#FAFAFA';
+    ctx.fillStyle = BACKGROUND;
     ctx.fillRect(0, 0, W, H);
 
     for (let dot of dots) {
@@ -246,7 +274,7 @@ window.onload = () => {
         if (dot.isRed && started) {
           if (labelTimerElapsed) {
             if (dot.labelAlpha < 1.0) {
-              dot.labelAlpha += 0.05;
+              dot.labelAlpha += 0.03;
               if (dot.labelAlpha > 1.0) dot.labelAlpha = 1.0;
             }
           }
@@ -260,17 +288,24 @@ window.onload = () => {
         if (!dot.isRed) {
           let gradVal = dot.y / H;
           let gray = Math.round(gradVal * 255);
-          ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+          ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + BLUE_TINT})`;
         } else {
-          ctx.fillStyle = '#FF4D4F';
+          ctx.fillStyle = RED;
+        }
+
+        if (dot.glow) {
+          ctx.shadowColor = 'rgba(255,77,79,0.6)';
+          ctx.shadowBlur = 20;
+        } else {
+          ctx.shadowBlur = 0;
         }
 
         ctx.fill();
 
         if (dot.isRed && dot.labelAlpha > 0) {
           ctx.globalAlpha = dot.labelAlpha;
-          ctx.fillStyle = '#FF4D4F';
-          ctx.font = '16px sans-serif';
+          ctx.fillStyle = RED;
+          ctx.font = '16px Pretendard, sans-serif';
           ctx.textAlign = 'center';
           ctx.shadowColor = 'rgba(0,0,0,0.3)';
           ctx.shadowBlur = 4;
@@ -299,10 +334,14 @@ window.onload = () => {
 
     for (let i = rings.length - 1; i >= 0; i--) {
       const ring = rings[i];
+      let gradient = ctx.createRadialGradient(ring.x, ring.y, ring.radius * 0.5, ring.x, ring.y, ring.radius);
+      gradient.addColorStop(0, RED);
+      gradient.addColorStop(1, RED_LIGHT);
+
       ctx.beginPath();
       ctx.arc(ring.x, ring.y, ring.radius, 0, 2 * Math.PI);
-      ctx.strokeStyle = `rgba(255, 77, 79, ${ring.opacity})`;
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 2 + ring.radius * 0.05;
       ctx.stroke();
 
       ring.radius += 2;
@@ -312,16 +351,26 @@ window.onload = () => {
       }
     }
 
-    if (!started) {
+    if (!started || (initialMessageAlpha > 0 && initialMessageFading)) {
       let tapFontSize = Math.max(20, Math.min(W, H) * 0.05);
-      ctx.fillStyle = '#FF4D4F';
-      ctx.font = `bold ${tapFontSize}px sans-serif`;
+      let gradient = ctx.createLinearGradient(W/2, 0, W/2, H);
+      gradient.addColorStop(0, RED);
+      gradient.addColorStop(1, RED_LIGHT);
+      ctx.fillStyle = gradient;
+      ctx.font = `bold ${tapFontSize}px Pretendard, sans-serif`;
       ctx.textAlign = 'center';
       ctx.shadowColor = 'rgba(0,0,0,0.2)';
       ctx.shadowBlur = 4;
       const textY = H / 2 + fontSize / 2 + 40;
+      ctx.globalAlpha = initialMessageAlpha;
       ctx.fillText('Tap the dots!', W / 2, textY);
       ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+
+      if (initialMessageFading) {
+        initialMessageAlpha -= 0.02;
+        if (initialMessageAlpha < 0) initialMessageAlpha = 0;
+      }
     }
 
     requestAnimationFrame(drawFrame);
