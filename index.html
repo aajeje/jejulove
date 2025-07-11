@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone - Center Shift Final Fixed</title>
+  <title>M Halftone - CenterShift Final Fix</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
     W = window.innerWidth;
     H = vh;
     SP = Math.max(3, Math.floor(W / 200));
-    centerShift = Math.min(H * 0.05, 50);  // ✅ shift 최대 50px 제한
+    centerShift = Math.max(H * 0.12, 100);
     initDots(false, ratio);
   }
 
