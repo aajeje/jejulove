@@ -108,13 +108,16 @@ window.onload = () => {
 
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
-    const centerShift = H * 0.1;
+    const centerShift = 0; // ✅ centerShift 제거
 
+    // ✅ Offscreen canvas 최적화 (scaleDown 50%)
+    const scaleDown = 0.8;
     const off = document.createElement('canvas');
-    off.width = W;
-    off.height = H;
+    off.width = W * scaleDown;
+    off.height = H * scaleDown;
     const octx = off.getContext('2d');
 
+    octx.scale(scaleDown, scaleDown);
     octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
@@ -123,21 +126,22 @@ window.onload = () => {
     octx.textBaseline = 'middle';
     octx.fillText(text, W / 2, H / 2 + centerShift);
 
-    const data = octx.getImageData(0, 0, W, H).data;
+    const data = octx.getImageData(0, 0, off.width, off.height).data;
 
-    for (let y = 0; y < H; y += SP) {
-      for (let x = 0; x < W; x += SP) {
-        const idx = (y * W + x) * 4;
+    for (let y = 0; y < off.height; y += SP) {
+      for (let x = 0; x < off.width; x += SP) {
+        const idx = (y * off.width + x) * 4;
         const brightness = data[idx] / 255;
         let isText = brightness < 0.9;
         let baseR = isText
           ? MAX_R * (1 - brightness)
-          : (y / H) * MAX_R * 0.4;
+          : (y / off.height) * MAX_R * 0.4;
 
         if (baseR < 0.3) baseR = 0.3;
 
         dots.push({
-          x, y,
+          x: x / scaleDown,
+          y: y / scaleDown,
           baseR,
           isText,
           isRed: false,
@@ -176,8 +180,9 @@ window.onload = () => {
           let newX = centerX + distance * Math.cos(angle);
           let newY = centerY + distance * Math.sin(angle);
 
+          // ✅ clamp 범위 상단 줄임 → 0.03로 수정
+          newY = clamp(newY, H * 0.03, H - H * 0.1);
           newX = clamp(newX, W * 0.1, W - W * 0.1);
-          newY = clamp(newY, H * 0.1, H - H * 0.1);
 
           let conflict = positions.some(pos => 
             Math.hypot(pos.x - newX, pos.y - newY) < MIN_DISTANCE
@@ -266,7 +271,6 @@ window.onload = () => {
 
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
-
       playClickSound(CLICK_SOUND_FREQ);
 
       if (clickedDot.label === '+821034405337') {
