@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone Safe Margin</title>
+  <title>M Halftone - Ultimate UX</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
       width: 100%;
@@ -22,10 +22,31 @@
       touch-action: none;
       cursor: pointer;
     }
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(255, 77, 79, 0.9);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: all 0.5s ease;
+      pointer-events: none;
+      font-size: 14px;
+      z-index: 9999;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
   </style>
 </head>
 <body>
 <canvas id="halftoneCanvas"></canvas>
+<div id="toast"></div>
+
 <script>
 window.onload = () => {
   const RED = '#FF4D4F';
@@ -33,20 +54,20 @@ window.onload = () => {
   const BLUE_TINT = 150;
   const BACKGROUND = '#FAFAFA';
   const FADE_SPEED = 0.02;
-  const CLICK_SOUND_FREQ = 440;
   const DOT_FILL_SPEED = 100;
   const RED_DOT_SCALE = 10;
+  const TAP_RADIUS_MOBILE = 50;
   const MIN_TAP_RADIUS = 40;
 
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
+  const toast = document.getElementById('toast');
 
   let W, H, SP, MAX_R, fontSize;
   let dots = [], backgroundDots = [];
   let started = false;
   let labelTimerStarted = false;
   let labelTimerElapsed = false;
-  let rings = [];
   let visibleDots = 0;
   let initialMessageAlpha = 1.0;
   let initialMessageFading = false;
@@ -55,13 +76,22 @@ window.onload = () => {
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  function clamp(val, min, max) {
-    return Math.min(Math.max(val, min), max);
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
   }
 
   function resizeCanvas() {
+    const minHeight = 300;
+    const vh = Math.max(
+      (window.visualViewport && window.visualViewport.height > 0)
+        ? window.visualViewport.height
+        : window.innerHeight,
+      minHeight
+    );
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.height = vh;
     W = canvas.width;
     H = canvas.height;
     SP = Math.max(3, Math.floor(W / 200));
@@ -78,63 +108,46 @@ window.onload = () => {
 
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
+    const centerShift = H * 0.1;
 
     const off = document.createElement('canvas');
     off.width = W;
     off.height = H;
     const octx = off.getContext('2d');
-
-    let textWidth = Infinity;
-    while (textWidth > W - 4 && fontSize > 10) {
-      octx.font = `${fontSize}px Pretendard, sans-serif`;
-      textWidth = octx.measureText(text).width;
-      if (textWidth > W - 4) {
-        fontSize -= 10;
-      }
-    }
-
     octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
     octx.font = `${fontSize}px Pretendard, sans-serif`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(text, W / 2, H / 2);
+    octx.fillText(text, W / 2, H / 2 + centerShift);
 
     const data = octx.getImageData(0, 0, W, H).data;
 
     for (let y = 0; y < H; y += SP) {
-      const grad = y / H;
       for (let x = 0; x < W; x += SP) {
         const idx = (y * W + x) * 4;
         const brightness = data[idx] / 255;
-
-        let baseR;
         let isText = brightness < 0.9;
-        if (isText) {
-          baseR = MAX_R * (1 - brightness);
-        } else {
-          baseR = grad * MAX_R * 0.4;
-        }
+        let baseR = isText
+          ? MAX_R * (1 - brightness)
+          : (y / H) * MAX_R * 0.4;
 
         if (baseR < 0.3) baseR = 0.3;
 
-        const speed = isText ? 1.0 : 0.2;
-
-        const dot = {
-          x, y, baseR, currentR: baseR,
-          isText, isRed: false,
-          glow: false, label: '',
+        dots.push({
+          x, y,
+          baseR,
+          isText,
+          isRed: false,
+          glow: false,
+          label: '',
           phase: Math.random() * Math.PI * 2,
-          speed, labelAlpha: 0,
-          visible: false,
-          alpha: 0,
-          randomTint: Math.round(Math.random() * 30),
-          angle: Math.random() * 2 * Math.PI,
-        };
+          speed: isText ? 1.0 : 0.2,
+          labelAlpha: 0
+        });
 
-        dots.push(dot);
-        if (!isText) backgroundDots.push(dot);
+        if (!isText) backgroundDots.push(dots[dots.length - 1]);
       }
     }
 
@@ -146,74 +159,52 @@ window.onload = () => {
       ];
 
       const centerX = W / 2;
-      const centerY = H / 2;
-      const MIN_RADIUS = 200;
-      const MAX_RADIUS = 400;
-      const MIN_DISTANCE = 150;
+      const centerY = H / 2 + centerShift;
+      const MIN_RADIUS = Math.min(W, H) * 0.2;
+      const MAX_RADIUS = Math.min(W, H) * 0.4;
+      const MIN_DISTANCE = Math.min(W, H) * 0.2;
 
       const positions = [];
 
-      for (let i = 0; i < labels.length; i++) {
-        let attempt = 0;
-        let found = false;
-
-        const labelText = labels[i];
-        const labelFontSize = Math.max(12, Math.min(16, W * 0.02));
-        ctx.font = `${labelFontSize}px Pretendard, sans-serif`;
-        const labelWidth = ctx.measureText(labelText).width;
-
-        const safeMarginX = (RED_DOT_SCALE * MAX_R) + labelWidth/2 + 10;
-        const safeMarginY = (RED_DOT_SCALE * MAX_R) + 20;
-
+      for (let label of labels) {
+        let attempt = 0, found = false;
         while (!found && attempt < 2000) {
           attempt++;
-          const angle = Math.random() * 2 * Math.PI;
+          const angle = -Math.PI/2 + Math.random() * Math.PI;
           const distance = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
-
           let newX = centerX + distance * Math.cos(angle);
           let newY = centerY + distance * Math.sin(angle);
 
-          newX = clamp(newX, safeMarginX, W - safeMarginX);
-          newY = clamp(newY, safeMarginY, H - safeMarginY);
+          newX = clamp(newX, W * 0.1, W - W * 0.1);
+          newY = clamp(newY, H * 0.1, H - H * 0.1);
 
-          let conflict = false;
-          for (let j = 0; j < positions.length; j++) {
-            const prev = positions[j];
-            const dist = Math.hypot(newX - prev.x, newY - prev.y);
-            if (dist < MIN_DISTANCE) {
-              conflict = true;
-              break;
-            }
-          }
+          let conflict = positions.some(pos => 
+            Math.hypot(pos.x - newX, pos.y - newY) < MIN_DISTANCE
+          );
 
           if (!conflict) {
-            positions.push({ x: newX, y: newY, label: labelText });
+            positions.push({ x: newX, y: newY, label });
             found = true;
           }
         }
-
         if (!found) {
-          console.warn("Cannot place dot without conflict. Placing at center.");
-          positions.push({ x: centerX, y: centerY, label: labels[i] });
+          console.warn("배치 실패 - 중앙 배치");
+          positions.push({ x: centerX, y: centerY, label });
         }
       }
 
       for (let i = 0; i < positions.length; i++) {
-        const dot = backgroundDots[i];
+        let dot = backgroundDots[i];
         dot.x = positions[i].x;
         dot.y = positions[i].y;
         dot.isRed = true;
         dot.label = positions[i].label;
         dot.baseR *= RED_DOT_SCALE;
-
-        dot.gradient = createDotGradient(dot);
       }
 
       if (!labelTimerStarted) {
         labelTimerStarted = true;
-        setTimeout(() => {
-          labelTimerElapsed = true;
-        }, 3000);
+        setTimeout(() => labelTimerElapsed = true, 3000);
       }
     }
 
@@ -221,55 +212,172 @@ window.onload = () => {
     gradients.redDot.addColorStop(0, RED);
     gradients.redDot.addColorStop(1, RED_LIGHT);
 
-    gradients.rings = {
-      default: createRingGradient(RED, RED_LIGHT),
-      kakao: createRingGradient('#3B1E1E', '#5B3E3E'),
-      hanmail: createRingGradient('#0078D4', '#3399FF')
-    };
-
     if (!hoverHandler) {
       hoverHandler = e => {
         const x = e.offsetX;
         const y = e.offsetY;
-        let glowActive = false;
+        let active = false;
         dots.forEach(dot => {
           if (dot.isRed) {
             const dist = Math.hypot(dot.x - x, dot.y - y);
-            dot.glow = dist < SP * 3;
-            if (dot.glow) glowActive = true;
+            if (dist < dot.baseR * 1.5) {
+              dot.glow = true;
+              active = true;
+            } else {
+              dot.glow = false;
+            }
           }
         });
-        canvas.style.cursor = glowActive ? 'pointer' : 'default';
+        canvas.style.cursor = active ? 'pointer' : 'default';
       };
       canvas.addEventListener('mousemove', hoverHandler);
     }
   }
 
-  function createDotGradient(dot) {
-    const grad = ctx.createLinearGradient(
-      dot.x + Math.cos(dot.angle) * dot.baseR,
-      dot.y + Math.sin(dot.angle) * dot.baseR,
-      dot.x - Math.cos(dot.angle) * dot.baseR,
-      dot.y - Math.sin(dot.angle) * dot.baseR
-    );
-    grad.addColorStop(0, RED);
-    grad.addColorStop(1, RED_LIGHT);
-    return grad;
+  function clamp(val, min, max) {
+    return Math.min(Math.max(val, min), max);
   }
 
-  function createRingGradient(c1, c2) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, c1);
-    gradient.addColorStop(1, c2);
-    return gradient;
+  canvas.addEventListener('click', e => {
+    if (!started) {
+      started = true;
+      initialMessageFading = true;
+      initDots(true);
+      playClickSound(CLICK_SOUND_FREQ);
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    let clickedDot = null;
+    for (let dot of dots) {
+      if (dot.isRed) {
+        const dist = Math.hypot(dot.x - clickX, dot.y - clickY);
+        const threshold = navigator.maxTouchPoints > 0 ? TAP_RADIUS_MOBILE : dot.baseR * 1.2;
+        if (dist < threshold) {
+          clickedDot = dot;
+          break;
+        }
+      }
+    }
+
+    if (clickedDot) {
+      showToast(`${clickedDot.label}로 이동합니다.`);
+
+      let freq = clickedDot.label.includes("kakao") ? 600 :
+                 clickedDot.label.includes("hanmail") ? 300 :
+                 CLICK_SOUND_FREQ;
+      playClickSound(freq);
+
+      setTimeout(() => {
+        if (clickedDot.label === '+821034405337') {
+          window.location.href = 'tel:+821034405337';
+        } else if (clickedDot.label === 'aajej@hanmail.net') {
+          window.location.href =
+            'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
+        } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
+          window.location.href = 'https://open.kakao.com/o/seDPpmGh';
+        }
+      }, 500);
+    }
+  });
+
+  function playClickSound(freq) {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
   }
 
-  // (이하 drawFrame, click handler 등은 이전 최종 코드와 동일)
-  // 필요하면 이어서 붙여 드리겠습니다.
-  // space 제약으로 여기에 drawFrame 이하 생략합니다.
+  function drawFrame(time) {
+    ctx.fillStyle = BACKGROUND;
+    ctx.fillRect(0, 0, W, H);
+
+    if (visibleDots < dots.length) visibleDots += DOT_FILL_SPEED;
+
+    dots.forEach((dot, i) => {
+      if (i > visibleDots) return;
+      const t = time / 500 * dot.speed + dot.phase;
+      const scale = 0.5 + 0.5 * Math.sin(t);
+      let r = dot.baseR * scale;
+
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
+
+      if (dot.isRed) {
+        ctx.fillStyle = dot.glow ? 'rgba(255,77,79,0.8)' : gradients.redDot;
+      } else if (dot.isText) {
+        ctx.fillStyle = gradients.redDot;
+      } else {
+        let gradVal = dot.y / H;
+        gradVal += 0.05 * Math.sin(time / 1000 + dot.phase);
+        gradVal = Math.max(0, Math.min(1, gradVal));
+        let gray = Math.round(gradVal * 255);
+        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + BLUE_TINT})`;
+      }
+
+      if (dot.glow) {
+        ctx.shadowColor = 'rgba(255,77,79,0.6)';
+        ctx.shadowBlur = 20;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.fill();
+
+      if (dot.isRed && dot.labelAlpha > 0) {
+        ctx.globalAlpha = dot.labelAlpha;
+        let fsize = Math.max(12, Math.min(16, W * 0.02));
+        ctx.font = `bold ${fsize}px Pretendard, sans-serif`;
+        ctx.textAlign = 'center';
+        const textWidth = ctx.measureText(dot.label).width;
+        let labelX = dot.x;
+        let labelY = dot.y - r - 10;
+        if (labelY < 20) labelY = dot.y + r + 20;
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(labelX - textWidth/2 - 6, labelY - 16, textWidth + 12, 20);
+        ctx.fillStyle = RED;
+        ctx.fillText(dot.label, labelX, labelY);
+        ctx.globalAlpha = 1.0;
+      }
+
+      if (dot.isRed && started && labelTimerElapsed) {
+        dot.labelAlpha = Math.min(dot.labelAlpha + 0.03, 1.0);
+      }
+    });
+
+    if (!started || (initialMessageAlpha > 0 && initialMessageFading)) {
+      let tapSize = Math.max(20, Math.min(W, H) * 0.05);
+      const grad = ctx.createLinearGradient(W/2, 0, W/2, H);
+      grad.addColorStop(0, RED);
+      grad.addColorStop(1, RED_LIGHT);
+      const y = H/2 + fontSize/2 + 40;
+      const scale = 1 + 0.05 * Math.sin(time / 200);
+      ctx.setTransform(scale, 0, 0, scale, W/2 * (1 - scale), y * (1 - scale));
+      ctx.fillStyle = grad;
+      ctx.font = `bold ${tapSize}px Pretendard, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowBlur = 4;
+      ctx.globalAlpha = initialMessageAlpha;
+      ctx.fillText('Tap the dots!\n(터치해보세요!)', W/2, y);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1.0;
+      if (initialMessageFading) {
+        initialMessageAlpha -= FADE_SPEED;
+        if (initialMessageAlpha < 0) initialMessageAlpha = 0;
+      }
+    }
+    requestAnimationFrame(drawFrame);
+  }
 
   resizeCanvas();
-  requestAnimationFrame(() => {});
+  requestAnimationFrame(drawFrame);
 };
 </script>
 </body>
