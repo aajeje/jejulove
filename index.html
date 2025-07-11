@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone with Timed Labels - Final Fixed</title>
+  <title>M Halftone Optimized</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -55,7 +55,7 @@ window.onload = () => {
   const BACKGROUND = '#FAFAFA';
   const FADE_SPEED = 0.02;
   const CLICK_SOUND_FREQ = 440;
-  const DOT_FILL_SPEED = 100;
+  const DOT_FILL_SPEED = 200;
   const RED_DOT_SCALE = 10;
   const TAP_RADIUS_MOBILE = 50;
 
@@ -94,7 +94,7 @@ window.onload = () => {
     canvas.height = vh;
     W = canvas.width;
     H = canvas.height;
-    SP = Math.max(3, Math.floor(W / 200));
+    SP = Math.max(6, Math.floor(W / 100));
     initDots(false);
   }
 
@@ -110,11 +110,14 @@ window.onload = () => {
     fontSize = Math.min(W, H) * 0.4;
     const centerShift = H * 0.1;
 
+    // ✅ Offscreen canvas with scaleDown
+    const scaleDown = 0.25;
     const off = document.createElement('canvas');
-    off.width = W;
-    off.height = H;
+    off.width = W * scaleDown;
+    off.height = H * scaleDown;
     const octx = off.getContext('2d');
 
+    octx.scale(scaleDown, scaleDown);
     octx.fillStyle = BACKGROUND;
     octx.fillRect(0, 0, W, H);
     octx.fillStyle = '#000';
@@ -123,21 +126,21 @@ window.onload = () => {
     octx.textBaseline = 'middle';
     octx.fillText(text, W / 2, H / 2 + centerShift);
 
-    const data = octx.getImageData(0, 0, W, H).data;
+    const data = octx.getImageData(0, 0, off.width, off.height).data;
 
-    for (let y = 0; y < H; y += SP) {
-      for (let x = 0; x < W; x += SP) {
-        const idx = (y * W + x) * 4;
+    for (let y = 0; y < off.height; y += SP) {
+      for (let x = 0; x < off.width; x += SP) {
+        const idx = (y * off.width + x) * 4;
         const brightness = data[idx] / 255;
         let isText = brightness < 0.9;
         let baseR = isText
           ? MAX_R * (1 - brightness)
-          : (y / H) * MAX_R * 0.4;
-
+          : (y / off.height) * MAX_R * 0.4;
         if (baseR < 0.3) baseR = 0.3;
 
         dots.push({
-          x, y,
+          x: x / scaleDown,
+          y: y / scaleDown,
           baseR,
           isText,
           isRed: false,
@@ -266,7 +269,6 @@ window.onload = () => {
 
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
-
       playClickSound(CLICK_SOUND_FREQ);
 
       if (clickedDot.label === '+821034405337') {
