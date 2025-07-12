@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone Optimized (Speed)</title>
+  <title>M Halftone Optimized (Center Fixed)</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -75,7 +75,7 @@ window.onload = () => {
   let audioBuffer = null;
 
   let offCanvas, offCtx, offData, scanBox = null;
-  let labelCache = {}; // label → canvas
+  let labelCache = {};
 
   // sin LUT
   const sinLUT = new Float32Array(360);
@@ -92,13 +92,9 @@ window.onload = () => {
   }
 
   function resizeCanvas() {
-    const minHeight = 300;
-    const vh = Math.max(
-      (window.visualViewport && window.visualViewport.height > 0)
-        ? window.visualViewport.height
-        : window.innerHeight,
-      minHeight
-    );
+    const vh = window.visualViewport
+      ? window.visualViewport.height
+      : document.documentElement.clientHeight;
     canvas.width = window.innerWidth;
     canvas.height = vh;
     W = canvas.width;
@@ -115,7 +111,8 @@ window.onload = () => {
 
   function initTextCanvas() {
     fontSize = Math.min(W, H) * 0.4;
-    const centerShift = H * 0.1;
+    const centerShift = Math.min(W, H) * 0.05;
+    const yOffset = H * 0.05;
 
     offCanvas = document.createElement('canvas');
     offCanvas.width = W;
@@ -127,7 +124,7 @@ window.onload = () => {
     offCtx.font = `${fontSize}px Pretendard, sans-serif`;
     offCtx.textAlign = 'center';
     offCtx.textBaseline = 'middle';
-    offCtx.fillText('M', W / 2, H / 2 + centerShift);
+    offCtx.fillText('M', W / 2, H / 2 - centerShift - yOffset);
 
     const textMetrics = offCtx.measureText('M');
     const textWidth = textMetrics.width;
@@ -135,8 +132,8 @@ window.onload = () => {
     scanBox = {
       left: Math.floor(W/2 - textWidth/2) - SP,
       right: Math.ceil(W/2 + textWidth/2) + SP,
-      top: Math.floor(H/2 + centerShift - textHeight/2) - SP,
-      bottom: Math.ceil(H/2 + centerShift + textHeight/2) + SP
+      top: Math.floor(H/2 - textHeight/2 - centerShift - yOffset) - SP,
+      bottom: Math.ceil(H/2 + textHeight/2 - centerShift - yOffset) + SP
     };
 
     offData = offCtx.getImageData(
@@ -226,7 +223,7 @@ window.onload = () => {
     ];
 
     const centerX = W / 2;
-    const centerY = H / 2 + H * 0.1;
+    const centerY = H / 2;
     const MIN_RADIUS = Math.min(W, H) * 0.2;
     const MAX_RADIUS = Math.min(W, H) * 0.4;
     const MIN_DISTANCE = Math.min(W, H) * 0.2;
@@ -373,7 +370,6 @@ window.onload = () => {
       const scale = sinLUT[angle];
       let r = dot.baseR * scale;
 
-      // viewport culling
       if (
         dot.x + r < 0 ||
         dot.x - r > W ||
@@ -422,7 +418,7 @@ window.onload = () => {
       const grad = ctx.createLinearGradient(W/2, 0, W/2, H);
       grad.addColorStop(0, RED);
       grad.addColorStop(1, RED_LIGHT);
-      const y = H/2 + fontSize/2 + 40;
+      const y = H/2 + fontSize/2;
       const scale = 1 + 0.05 * sinLUT[Math.floor((time/3)%360)];
       ctx.setTransform(scale, 0, 0, scale, W/2 * (1 - scale), y * (1 - scale));
       ctx.fillStyle = grad;
