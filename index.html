@@ -221,14 +221,22 @@ window.onload = () => {
         : window.innerHeight,
       minHeight
     );
-    canvas.width = window.innerWidth * ratio;
-    canvas.height = vh * ratio;
+
+    // CSS size
     canvas.style.width = window.innerWidth + "px";
     canvas.style.height = vh + "px";
+
+    // Pixel resolution
+    canvas.width = window.innerWidth * ratio;
+    canvas.height = vh * ratio;
+
+    // Context scaling
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
     W = window.innerWidth;
     H = vh;
     SP = Math.max(3, Math.floor(W / 200));
+
     initDots(false);
   }
 
