@@ -74,6 +74,7 @@
       color: #000;
       line-height: 1.8;
       max-width: 300px;
+      user-select: text;
     }
     .info-bottom a {
       color: #000;
@@ -270,7 +271,9 @@
           <div class="column">
             <div class="item"><span class="bullet"></span>branding</div>
             <div class="item"><span class="bullet"></span>graphic</div>
-            <div class="item"><span class="bullet"></span>editorial</div>
+            <div class="item" data-url="https://printree.kr/search.php?search_action=search&list_id=share__aajej">
+              <span class="bullet"></span>pattern
+            </div>
           </div>
           <div class="divider"></div>
           <div class="column">
@@ -282,7 +285,7 @@
         <div class="kakao-link">
           <a href="https://open.kakao.com/o/seDPpmGh" target="_blank" aria-label="카카오톡 문의">
             <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/kakaotalk.svg" alt="카카오톡 아이콘">
-            카카오톡 문의(코드:jiwon)
+            카카오톡 문의
           </a>
         </div>
       </div>
@@ -297,214 +300,220 @@
   <div class="page-indicator" id="pageIndicator">1 / 3</div>
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-<script>
-  const fonts = [
-    '"Roboto", sans-serif',
-    '"Playfair Display", serif',
-    '"Indie Flower", cursive',
-    '"Courier Prime", monospace'
-  ];
+  <script>
+    const fonts = [
+      '"Roboto", sans-serif',
+      '"Playfair Display", serif',
+      '"Indie Flower", cursive',
+      '"Courier Prime", monospace'
+    ];
 
-  const colorsPage1 = ['#e0e0e0', '#cfcfcf', '#b3b3b3'];
-  const colorsPage2 = ['#333333', '#666666', '#000000'];
-  const colorsPage3 = ['#333333', '#666666', '#000000'];
+    const colorsPage1 = ['#e0e0e0', '#cfcfcf', '#b3b3b3'];
+    const colorsPage2 = ['#333333', '#666666', '#000000'];
+    const colorsPage3 = ['#333333', '#666666', '#000000'];
 
-  function createMonss(containerId) {
-    const lines = ["Monss", "Design"];
-    const container = document.getElementById(containerId);
-    lines.forEach(text => {
-      const div = document.createElement('div');
-      div.className = 'line';
-      for (let char of text) {
-        if (char === ' ') {
-          const space = document.createElement('span');
-          space.style.width = '0.8em';
-          div.appendChild(space);
-        } else {
-          const span = document.createElement('span');
-          span.className = 'letter';
-          span.textContent = char;
-          div.appendChild(span);
+    function createMonss(containerId) {
+      const lines = ["Monss", "Design"];
+      const container = document.getElementById(containerId);
+      lines.forEach(text => {
+        const div = document.createElement('div');
+        div.className = 'line';
+        for (let char of text) {
+          if (char === ' ') {
+            const space = document.createElement('span');
+            space.style.width = '0.8em';
+            div.appendChild(space);
+          } else {
+            const span = document.createElement('span');
+            span.className = 'letter';
+            span.textContent = char;
+            div.appendChild(span);
+          }
         }
-      }
-      container.appendChild(div);
-    });
-  }
+        container.appendChild(div);
+      });
+    }
 
-  function waveFadeEffect(colors) {
-    const letters = document.querySelectorAll('.monss .letter');
-    letters.forEach((span, i) => {
-      setTimeout(() => {
-        span.style.opacity = 0;
+    function waveFadeEffect(colors) {
+      const letters = document.querySelectorAll('.monss .letter');
+      letters.forEach((span, i) => {
         setTimeout(() => {
-          span.style.fontFamily = fonts[Math.floor(Math.random() * fonts.length)];
-          span.style.color = colors[Math.floor(Math.random() * colors.length)];
-          span.style.transform = `rotate(${Math.random() * 10 - 5}deg) scale(${1 + Math.random() * 0.3}) skewX(${Math.random() * 5 - 2.5}deg)`;
-          span.style.opacity = 1;
-        }, 400);
-      }, i * (100 + Math.random() * 100));
+          span.style.opacity = 0;
+          setTimeout(() => {
+            span.style.fontFamily = fonts[Math.floor(Math.random() * fonts.length)];
+            span.style.color = colors[Math.floor(Math.random() * colors.length)];
+            span.style.transform = `rotate(${Math.random() * 10 - 5}deg) scale(${1 + Math.random() * 0.3}) skewX(${Math.random() * 5 - 2.5}deg)`;
+            span.style.opacity = 1;
+          }, 400);
+        }, i * (100 + Math.random() * 100));
+      });
+    }
+
+    function setActiveDot(index, color) {
+      document.documentElement.style.setProperty('--dot-color', color);
+      for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById(`dot${i}`);
+        dot.classList.toggle('active', i === index);
+      }
+      document.getElementById('pageIndicator').textContent = `${index} / 3`;
+    }
+
+    function changePage(page) {
+      document.getElementById('pagesContainer').style.transform =
+        `translateX(-${(page - 1) * (100/3)}%)`;
+      document.querySelectorAll('.page').forEach((el, i) => {
+        el.classList.toggle('active', i === (page - 1));
+      });
+
+      let colors, dotColor;
+      if (page === 1) {
+        colors = colorsPage1;
+        dotColor = '#ffffff';
+      } else if (page === 2) {
+        colors = colorsPage2;
+        dotColor = '#000000';
+      } else if (page === 3) {
+        colors = colorsPage3;
+        dotColor = '#000000';
+      }
+
+      clearInterval(window.waveTimer);
+      waveFadeEffect(colors);
+      window.waveTimer = setInterval(() => waveFadeEffect(colors), 2500);
+      setActiveDot(page, dotColor);
+    }
+
+    createMonss('monss');
+    waveFadeEffect(colorsPage1);
+    window.waveTimer = setInterval(() => waveFadeEffect(colorsPage1), 2500);
+    setActiveDot(1, '#ffffff');
+
+    let currentPage = 1;
+    let startX = 0;
+    let currentX = 0;
+    let moved = false;
+    let mouseDown = false;
+
+    document.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      moved = false;
     });
-  }
-
-  function setActiveDot(index, color) {
-    document.documentElement.style.setProperty('--dot-color', color);
-    for (let i = 1; i <= 3; i++) {
-      const dot = document.getElementById(`dot${i}`);
-      dot.classList.toggle('active', i === index);
-    }
-    document.getElementById('pageIndicator').textContent = `${index} / 3`;
-  }
-
-  function changePage(page) {
-    document.getElementById('pagesContainer').style.transform =
-      `translateX(-${(page - 1) * (100/3)}%)`;
-    document.querySelectorAll('.page').forEach((el, i) => {
-      el.classList.toggle('active', i === (page - 1));
+    document.addEventListener('touchmove', (e) => {
+      currentX = e.touches[0].clientX;
+      moved = true;
+    });
+    document.addEventListener('touchend', () => {
+      handleSwipe();
     });
 
-    let colors, dotColor;
-    if (page === 1) {
-      colors = colorsPage1;
-      dotColor = '#ffffff';
-    } else if (page === 2) {
-      colors = colorsPage2;
-      dotColor = '#000000';
-    } else if (page === 3) {
-      colors = colorsPage3;
-      dotColor = '#000000';
-    }
-
-    clearInterval(window.waveTimer);
-    waveFadeEffect(colors);
-    window.waveTimer = setInterval(() => waveFadeEffect(colors), 2500);
-    setActiveDot(page, dotColor);
-  }
-
-  createMonss('monss');
-  waveFadeEffect(colorsPage1);
-  window.waveTimer = setInterval(() => waveFadeEffect(colorsPage1), 2500);
-  setActiveDot(1, '#ffffff');
-
-  let currentPage = 1;
-  let startX = 0;
-  let currentX = 0;
-  let moved = false;
-  let mouseDown = false;
-
-  document.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    moved = false;
-  });
-  document.addEventListener('touchmove', (e) => {
-    currentX = e.touches[0].clientX;
-    moved = true;
-  });
-  document.addEventListener('touchend', () => {
-    handleSwipe();
-  });
-
-  document.addEventListener('mousedown', (e) => {
-    startX = e.clientX;
-    moved = false;
-    mouseDown = true;
-  });
-  document.addEventListener('mousemove', (e) => {
-    if (!mouseDown) return;
-    currentX = e.clientX;
-    moved = true;
-  });
-  document.addEventListener('mouseup', () => {
-    if (!mouseDown) return;
-    mouseDown = false;
-    handleSwipe();
-  });
-
-  function handleSwipe() {
-    if (moved && (startX - currentX > 50) && currentPage < 3) {
-      currentPage++;
-      changePage(currentPage);
-    }
-    if (moved && (currentX - startX > 50) && currentPage > 1) {
-      currentPage--;
-      changePage(currentPage);
-    }
-  }
-
-  document.querySelectorAll('.dot').forEach((dot, index) => {
-    dot.addEventListener('click', () => {
-      const targetPage = index + 1;
-      if (targetPage === currentPage) return;
-      currentPage = targetPage;
-      changePage(currentPage);
+    document.addEventListener('mousedown', (e) => {
+      startX = e.clientX;
+      moved = false;
+      mouseDown = true;
     });
-  });
+    document.addEventListener('mousemove', (e) => {
+      if (!mouseDown) return;
+      currentX = e.clientX;
+      moved = true;
+    });
+    document.addEventListener('mouseup', () => {
+      if (!mouseDown) return;
+      mouseDown = false;
+      handleSwipe();
+    });
 
-  function showToast(message, callback, delay = 1000) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => {
-      toast.classList.remove('show');
-      if (callback) callback();
-    }, delay);
-  }
+    function handleSwipe() {
+      if (moved && (startX - currentX > 50) && currentPage < 3) {
+        currentPage++;
+        changePage(currentPage);
+      }
+      if (moved && (currentX - startX > 50) && currentPage > 1) {
+        currentPage--;
+        changePage(currentPage);
+      }
+    }
 
-  document.querySelectorAll('.info-bottom a[href^="tel:"]').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      showToast("전화 앱으로 연결합니다", () => {
-        window.location.href = link.href;
+    document.querySelectorAll('.dot').forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        const targetPage = index + 1;
+        if (targetPage === currentPage) return;
+        currentPage = targetPage;
+        changePage(currentPage);
       });
     });
-  });
 
-  document.querySelectorAll('.info-bottom a[href^="mailto:"]').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      showToast("메일 앱으로 연결합니다", () => {
-        window.location.href = link.href;
+    function showToast(message, callback, delay = 1000) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+        if (callback) callback();
+      }, delay);
+    }
+
+    document.querySelectorAll('.info-bottom a[href^="tel:"]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        showToast("전화 앱으로 연결합니다", () => {
+          window.location.href = link.href;
+        });
       });
     });
-  });
 
-  document.querySelectorAll('.kakao-link a').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      showToast("카카오톡으로 연결합니다", () => {
-        window.open(link.href, "_blank");
+    document.querySelectorAll('.info-bottom a[href^="mailto:"]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        showToast("메일 앱으로 연결합니다", () => {
+          window.location.href = link.href;
+        });
       });
     });
-  });
 
-  document.querySelectorAll('.service-list .item').forEach(item => {
-    item.addEventListener('click', () => {
-      showToast("해당 서비스 준비 중입니다");
+    document.querySelectorAll('.kakao-link a').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        showToast("카카오톡으로 연결합니다", () => {
+          window.open(link.href, "_blank");
+        });
+      });
     });
-  });
 
-  document.querySelectorAll('.info-top, .info-bottom').forEach(el => {
-    el.addEventListener('mousedown', e => {
-      if (
-        e.target.closest('a') ||
-        e.target.closest('.service-list .item') ||
-        e.target.closest('.monss')
-      ) return;
-      e.preventDefault();
+    document.querySelectorAll('.service-list .item').forEach(item => {
+      item.addEventListener('click', () => {
+        const url = item.getAttribute('data-url');
+        if (url) {
+          showToast("해당 페이지로 이동합니다", () => {
+            window.open(url, "_blank");
+          });
+        } else {
+          showToast("해당 서비스 준비 중입니다");
+        }
+      });
     });
-    el.addEventListener('touchstart', e => {
-      if (
-        e.target.closest('a') ||
-        e.target.closest('.service-list .item') ||
-        e.target.closest('.monss')
-      ) return;
-      e.preventDefault();
+
+    document.querySelectorAll('.info-top, .info-bottom').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        if (
+          e.target.closest('a') ||
+          e.target.closest('.service-list .item') ||
+          e.target.closest('.monss')
+        ) return;
+        e.preventDefault();
+      });
+      el.addEventListener('touchstart', e => {
+        if (
+          e.target.closest('a') ||
+          e.target.closest('.service-list .item') ||
+          e.target.closest('.monss')
+        ) return;
+        e.preventDefault();
+      });
     });
-  });
 
-  document.querySelector('.monss').addEventListener('click', () => {
-    showToast("Monss Design 입니다!");
-  });
-</script>
-
+    document.querySelector('.monss').addEventListener('click', () => {
+      showToast("Monss Design 입니다!");
+    });
+  </script>
 </body>
 </html>
