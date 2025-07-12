@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Monss Design Swipe 3 Pages</title>
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&family=Playfair+Display:wght@700&family=Indie+Flower&family=Courier+Prime&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -480,20 +479,31 @@
     });
   });
 
-  document.querySelectorAll('.info-top, .info-bottom, .monss').forEach(el => {
+  // preventDefault, but exclude monss and interactive elements
+  document.querySelectorAll('.info-top, .info-bottom').forEach(el => {
     el.addEventListener('mousedown', e => {
-      if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
+      if (
+        e.target.closest('a') ||
+        e.target.closest('.service-list .item') ||
+        e.target.closest('.monss')
+      ) return;
       e.preventDefault();
     });
     el.addEventListener('touchstart', e => {
-      if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
+      if (
+        e.target.closest('a') ||
+        e.target.closest('.service-list .item') ||
+        e.target.closest('.monss')
+      ) return;
       e.preventDefault();
     });
   });
 
+  // Monss logo touch
   document.querySelector('.monss').addEventListener('click', () => {
     showToast("Monss Design 입니다!");
   });
 </script>
+
 </body>
 </html>
