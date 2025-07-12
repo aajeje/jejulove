@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone with Timed Labels - Refactored</title>
+  <title>M Halftone with Timed Labels - Optimized</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -49,33 +49,22 @@
 
 <script>
 window.onload = () => {
+  const RED = '#FF4D4F';
+  const RED_LIGHT = '#FF7875';
+  const BLUE_TINT = 150;
+  const BACKGROUND = '#FAFAFA';
+  const FADE_SPEED = 0.02;
+  const CLICK_SOUND_FREQ = 440;
+  const DOT_FILL_SPEED = 100;
+  const RED_DOT_SCALE = 10;
+  const TAP_RADIUS_MOBILE = 50;
 
-  // ----------------------------
-  // CONFIG
-  // ----------------------------
-  const CONFIG = {
-    RED: '#FF4D4F',
-    RED_LIGHT: '#FF7875',
-    BLUE_TINT: 150,
-    BACKGROUND: '#FAFAFA',
-    FADE_SPEED: 0.02,
-    CLICK_SOUND_FREQ: 440,
-    DOT_FILL_SPEED: 100,
-    RED_DOT_SCALE: 10,
-    TAP_RADIUS_MOBILE: 50,
-    SCALE_DOWN: 0.30,
-  };
-
-  // ----------------------------
-  // GLOBAL VARS
-  // ----------------------------
   const canvas = document.getElementById('halftoneCanvas');
   const ctx = canvas.getContext('2d');
   const toast = document.getElementById('toast');
 
   let W, H, SP, MAX_R, fontSize;
-  let dots = [];
-  let backgroundDots = [];
+  let dots = [], backgroundDots = [];
   let started = false;
   let labelTimerStarted = false;
   let labelTimerElapsed = false;
@@ -85,135 +74,15 @@ window.onload = () => {
   let gradients = {};
   let hoverHandler;
 
-  let offCanvas = null;
-  let offCtx = null;
-
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  // ----------------------------
-  // Dot Class
-  // ----------------------------
-  class Dot {
-    constructor(x, y, baseR, isText) {
-      this.x = x;
-      this.y = y;
-      this.baseR = baseR;
-      this.isText = isText;
-      this.isRed = false;
-      this.glow = false;
-      this.label = '';
-      this.phase = Math.random() * Math.PI * 2;
-      this.speed = isText ? 1.0 : 0.2;
-      this.labelAlpha = 0;
-    }
-
-    draw(ctx, time, gradients, W, H) {
-      const t = time / 500 * this.speed + this.phase;
-      const scale = 0.5 + 0.5 * Math.sin(t);
-      let r = this.baseR * scale;
-
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, r, 0, 2 * Math.PI);
-
-      if (this.isRed) {
-        ctx.fillStyle = this.glow ? 'rgba(255,77,79,0.8)' : gradients.redDot;
-      } else if (this.isText) {
-        ctx.fillStyle = gradients.redDot;
-      } else {
-        let gradVal = this.y / H;
-        gradVal += 0.05 * Math.sin(time / 1000 + this.phase);
-        gradVal = Math.max(0, Math.min(1, gradVal));
-        let gray = Math.round(gradVal * 255);
-        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + CONFIG.BLUE_TINT})`;
-      }
-
-      ctx.fill();
-
-      if (this.isRed && this.labelAlpha > 0) {
-        ctx.globalAlpha = this.labelAlpha;
-        let fsize = Math.max(12, Math.min(16, W * 0.02));
-        ctx.font = `bold ${fsize}px Pretendard, sans-serif`;
-        ctx.textAlign = 'center';
-        const textWidth = ctx.measureText(this.label).width;
-        let labelX = this.x;
-        let labelY = this.y - r - 10;
-        if (labelY < 20) labelY = this.y + r + 20;
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fillRect(labelX - textWidth/2 - 6, labelY - 16, textWidth + 12, 20);
-        ctx.fillStyle = CONFIG.RED;
-        ctx.fillText(this.label, labelX, labelY);
-        ctx.globalAlpha = 1.0;
-      }
-
-      if (this.isRed && started && labelTimerElapsed) {
-        this.labelAlpha = Math.min(this.labelAlpha + 0.03, 1.0);
-      }
-    }
-  }
-
-  // ----------------------------
-  // Helpers
-  // ----------------------------
-  function showToast(msg, callback, duration = 2000) {
+  function showToast(msg) {
     toast.textContent = msg;
     toast.classList.add('show');
-    setTimeout(() => {
-      toast.classList.remove('show');
-      if (callback) callback();
-    }, duration);
+    setTimeout(() => toast.classList.remove('show'), 2000);
   }
 
-  function clamp(val, min, max) {
-    return Math.min(Math.max(val, min), max);
-  }
-
-  function playClickSound(freq) {
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.1);
-  }
-
-  function initGradients(H) {
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, CONFIG.RED);
-    grad.addColorStop(1, CONFIG.RED_LIGHT);
-    return { redDot: grad };
-  }
-
-  function getOffscreenCanvas(W, H) {
-    if (!offCanvas || offCanvas.width !== W * CONFIG.SCALE_DOWN || offCanvas.height !== H * CONFIG.SCALE_DOWN) {
-      offCanvas = document.createElement('canvas');
-      offCanvas.width = W * CONFIG.SCALE_DOWN;
-      offCanvas.height = H * CONFIG.SCALE_DOWN;
-      offCtx = offCanvas.getContext('2d');
-    }
-    return { canvas: offCanvas, ctx: offCtx, scaleDown: CONFIG.SCALE_DOWN };
-  }
-
-  function renderTextToImageData(text, fontSize, W, H) {
-    const { canvas, ctx: octx, scaleDown } = getOffscreenCanvas(W, H);
-    octx.setTransform(1, 0, 0, 1, 0, 0);
-    octx.scale(scaleDown, scaleDown);
-    octx.fillStyle = CONFIG.BACKGROUND;
-    octx.fillRect(0, 0, W, H);
-    octx.fillStyle = '#000';
-    octx.font = `${fontSize}px Pretendard, sans-serif`;
-    octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    octx.fillText(text, W / 2, H / 2);
-    return octx.getImageData(0, 0, canvas.width, canvas.height).data;
-  }
-
-  // ----------------------------
-  // Main
-  // ----------------------------
   function resizeCanvas() {
-    const ratio = window.devicePixelRatio || 1;
     const minHeight = 300;
     const vh = Math.max(
       (window.visualViewport && window.visualViewport.height > 0)
@@ -221,28 +90,17 @@ window.onload = () => {
         : window.innerHeight,
       minHeight
     );
-
-    // CSS size
-    canvas.style.width = window.innerWidth + "px";
-    canvas.style.height = vh + "px";
-
-    // Pixel resolution
-    canvas.width = window.innerWidth * ratio;
-    canvas.height = vh * ratio;
-
-    // Context scaling
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-
-    W = window.innerWidth;
-    H = vh;
-    SP = Math.max(3, Math.floor(W / 200));
-
-    initDots(false);
+    canvas.width = window.innerWidth;
+    canvas.height = vh;
+    W = canvas.width;
+    H = canvas.height;
+    SP = Math.max(6, Math.floor(W / 100));
+    initDotsIncrementally(false);
   }
 
   window.addEventListener('resize', resizeCanvas);
 
-  function initDots(addRedDots) {
+  function initDotsIncrementally(addRedDots) {
     MAX_R = (SP / 2) * 1.5;
     dots = [];
     backgroundDots = [];
@@ -250,82 +108,79 @@ window.onload = () => {
 
     const text = 'M';
     fontSize = Math.min(W, H) * 0.4;
-    const data = renderTextToImageData(text, fontSize, W, H);
-    const { scaleDown } = getOffscreenCanvas(W, H);
+    const centerShift = H * 0.1;
 
-    for (let y = 0; y < offCanvas.height; y += SP) {
-      for (let x = 0; x < offCanvas.width; x += SP) {
-        const idx = (y * offCanvas.width + x) * 4;
-        const brightness = data[idx] / 255;
-        let isText = brightness < 0.9;
-        let baseR = isText
-          ? MAX_R * (1 - brightness)
-          : (y / offCanvas.height) * MAX_R * 0.4;
+    const off = document.createElement('canvas');
+    off.width = W;
+    off.height = H;
+    const octx = off.getContext('2d');
 
-        if (baseR < 0.3) baseR = 0.3;
-        dots.push(new Dot(x / scaleDown, y / scaleDown, baseR, isText));
-        if (!isText) backgroundDots.push(dots[dots.length - 1]);
+    octx.fillStyle = BACKGROUND;
+    octx.fillRect(0, 0, W, H);
+    octx.fillStyle = '#000';
+    octx.font = `${fontSize}px Pretendard, sans-serif`;
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(text, W / 2, H / 2 + centerShift);
+
+    const data = octx.getImageData(0, 0, W, H).data;
+
+    let y = 0;
+
+    function processNextRow(deadline) {
+      let count = 0;
+
+      while (y < H && (deadline.timeRemaining() > 0 || !window.requestIdleCallback)) {
+        for (let x = 0; x < W; x += SP) {
+          const idx = (y * W + x) * 4;
+          const brightness = data[idx] / 255;
+          let isText = brightness < 0.9;
+          let baseR = isText
+            ? MAX_R * (1 - brightness)
+            : (y / H) * MAX_R * 0.4;
+
+          if (baseR < 0.3) baseR = 0.3;
+
+          dots.push({
+            x, y,
+            baseR,
+            isText,
+            isRed: false,
+            glow: false,
+            label: '',
+            phase: Math.random() * Math.PI * 2,
+            speed: isText ? 1.0 : 0.2,
+            labelAlpha: 0
+          });
+
+          if (!isText) backgroundDots.push(dots[dots.length - 1]);
+        }
+        y += SP;
+        count++;
+        if (count > 5) break;
+      }
+
+      if (y < H) {
+        if (window.requestIdleCallback) {
+          requestIdleCallback(processNextRow);
+        } else {
+          setTimeout(() => processNextRow({ timeRemaining: () => 50 }), 10);
+        }
+      } else {
+        if (addRedDots) {
+          placeRedDots();
+        }
+        gradients.redDot = ctx.createLinearGradient(0, 0, 0, H);
+        gradients.redDot.addColorStop(0, RED);
+        gradients.redDot.addColorStop(1, RED_LIGHT);
       }
     }
 
-    if (addRedDots) {
-      const labels = [
-        '+821034405337',
-        'aajej@hanmail.net',
-        '카카오톡 오픈 채팅방'
-      ];
-
-      const centerX = W / 2;
-      const centerY = H / 2;
-      const MIN_RADIUS = Math.min(W, H) * 0.2;
-      const MAX_RADIUS = Math.min(W, H) * 0.4;
-      const MIN_DISTANCE = Math.min(W, H) * 0.2;
-
-      const positions = [];
-
-      for (let label of labels) {
-        let attempt = 0, found = false;
-        while (!found && attempt < 2000) {
-          attempt++;
-          const angle = -Math.PI/2 + Math.random() * Math.PI;
-          const distance = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
-          let newX = centerX + distance * Math.cos(angle);
-          let newY = centerY + distance * Math.sin(angle);
-
-          newY = clamp(newY, H * 0.03, H - H * 0.1);
-          newX = clamp(newX, W * 0.1, W - W * 0.1);
-
-          let conflict = positions.some(pos =>
-            Math.hypot(pos.x - newX, pos.y - newY) < MIN_DISTANCE
-          );
-
-          if (!conflict) {
-            positions.push({ x: newX, y: newY, label });
-            found = true;
-          }
-        }
-        if (!found) {
-          console.warn("배치 실패 - 중앙 배치");
-          positions.push({ x: centerX, y: centerY, label });
-        }
-      }
-
-      for (let i = 0; i < positions.length; i++) {
-        let dot = backgroundDots[i];
-        dot.x = positions[i].x;
-        dot.y = positions[i].y;
-        dot.isRed = true;
-        dot.label = positions[i].label;
-        dot.baseR *= CONFIG.RED_DOT_SCALE;
-      }
-
-      if (!labelTimerStarted) {
-        labelTimerStarted = true;
-        setTimeout(() => labelTimerElapsed = true, 3000);
-      }
+    if (window.requestIdleCallback) {
+      requestIdleCallback(processNextRow);
+    } else {
+      setTimeout(() => processNextRow({ timeRemaining: () => 50 }), 10);
     }
-
-    gradients = initGradients(H);
 
     if (!hoverHandler) {
       hoverHandler = e => {
@@ -349,12 +204,49 @@ window.onload = () => {
     }
   }
 
+  function placeRedDots() {
+    const labels = [
+      '+821034405337',
+      'aajej@hanmail.net',
+      '카카오톡 오픈 채팅방'
+    ];
+
+    const centerX = W / 2;
+    const centerY = H / 2 + H * 0.1;
+    const distance = Math.min(W, H) * 0.3;
+
+    for (let i = 0; i < labels.length; i++) {
+      const angle = (-Math.PI / 2) + (i * (Math.PI * 2 / labels.length));
+      let newX = centerX + distance * Math.cos(angle);
+      let newY = centerY + distance * Math.sin(angle);
+
+      newX = clamp(newX, W * 0.1, W - W * 0.1);
+      newY = clamp(newY, H * 0.1, H - H * 0.1);
+
+      let dot = backgroundDots[i % backgroundDots.length];
+      dot.x = newX;
+      dot.y = newY;
+      dot.isRed = true;
+      dot.label = labels[i];
+      dot.baseR *= RED_DOT_SCALE;
+    }
+
+    if (!labelTimerStarted) {
+      labelTimerStarted = true;
+      setTimeout(() => labelTimerElapsed = true, 3000);
+    }
+  }
+
+  function clamp(val, min, max) {
+    return Math.min(Math.max(val, min), max);
+  }
+
   canvas.addEventListener('click', e => {
     if (!started) {
       started = true;
       initialMessageFading = true;
-      initDots(true);
-      playClickSound(CONFIG.CLICK_SOUND_FREQ);
+      initDotsIncrementally(true);
+      playClickSound(CLICK_SOUND_FREQ);
       return;
     }
 
@@ -366,9 +258,7 @@ window.onload = () => {
     for (let dot of dots) {
       if (dot.isRed) {
         const dist = Math.hypot(dot.x - clickX, dot.y - clickY);
-        const threshold = navigator.maxTouchPoints > 0
-          ? CONFIG.TAP_RADIUS_MOBILE
-          : dot.baseR * 1.2;
+        const threshold = navigator.maxTouchPoints > 0 ? TAP_RADIUS_MOBILE : dot.baseR * 1.2;
         if (dist < threshold) {
           clickedDot = dot;
           break;
@@ -377,47 +267,90 @@ window.onload = () => {
     }
 
     if (clickedDot) {
-      playClickSound(CONFIG.CLICK_SOUND_FREQ);
-      showToast(`${clickedDot.label}로 이동합니다.`, () => {
-        if (clickedDot.label === '+821034405337') {
-          if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-            window.location.href = 'tel:+821034405337';
-          } else {
-            showToast('전화 연결은 모바일에서만 가능합니다.');
-          }
-        } else if (clickedDot.label === 'aajej@hanmail.net') {
-          window.location.href = 'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
-        } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
-          window.open('https://open.kakao.com/o/seDPpmGh', '_blank');
+      showToast(`${clickedDot.label}로 이동합니다.`);
+      playClickSound(CLICK_SOUND_FREQ);
+
+      if (clickedDot.label === '+821034405337') {
+        if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+          window.location.href = 'tel:+821034405337';
+        } else {
+          showToast('전화 연결은 모바일에서만 가능합니다.');
         }
-      });
+      } else if (clickedDot.label === 'aajej@hanmail.net') {
+        window.location.href =
+          'mailto:aajej@hanmail.net?subject=monss%20design&body=monss%20design';
+      } else if (clickedDot.label === '카카오톡 오픈 채팅방') {
+        window.open('https://open.kakao.com/o/seDPpmGh', '_blank');
+      }
     }
   });
 
+  function playClickSound(freq) {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  }
+
   function drawFrame(time) {
-    ctx.fillStyle = CONFIG.BACKGROUND;
+    ctx.fillStyle = BACKGROUND;
     ctx.fillRect(0, 0, W, H);
 
-    if (visibleDots < dots.length) visibleDots += CONFIG.DOT_FILL_SPEED;
+    if (visibleDots < dots.length) visibleDots += DOT_FILL_SPEED;
 
     dots.forEach((dot, i) => {
       if (i > visibleDots) return;
-      if (
-        dot.x + dot.baseR < 0 ||
-        dot.y + dot.baseR < 0 ||
-        dot.x - dot.baseR > W ||
-        dot.y - dot.baseR > H
-      ) {
-        return;
+      const t = time / 500 * dot.speed + dot.phase;
+      const scale = 0.5 + 0.5 * Math.sin(t);
+      let r = dot.baseR * scale;
+
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, r, 0, 2 * Math.PI);
+
+      if (dot.isRed) {
+        ctx.fillStyle = dot.glow ? 'rgba(255,77,79,0.8)' : gradients.redDot;
+      } else if (dot.isText) {
+        ctx.fillStyle = gradients.redDot;
+      } else {
+        let gradVal = dot.y / H;
+        gradVal += 0.05 * Math.sin(time / 1000 + dot.phase);
+        gradVal = Math.max(0, Math.min(1, gradVal));
+        let gray = Math.round(gradVal * 255);
+        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + BLUE_TINT})`;
       }
-      dot.draw(ctx, time, gradients, W, H);
+
+      ctx.fill();
+
+      if (dot.isRed && dot.labelAlpha > 0) {
+        ctx.globalAlpha = dot.labelAlpha;
+        let fsize = Math.max(12, Math.min(16, W * 0.02));
+        ctx.font = `bold ${fsize}px Pretendard, sans-serif`;
+        ctx.textAlign = 'center';
+        const textWidth = ctx.measureText(dot.label).width;
+        let labelX = dot.x;
+        let labelY = dot.y - r - 10;
+        if (labelY < 20) labelY = dot.y + r + 20;
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(labelX - textWidth/2 - 6, labelY - 16, textWidth + 12, 20);
+        ctx.fillStyle = RED;
+        ctx.fillText(dot.label, labelX, labelY);
+        ctx.globalAlpha = 1.0;
+      }
+
+      if (dot.isRed && started && labelTimerElapsed) {
+        dot.labelAlpha = Math.min(dot.labelAlpha + 0.03, 1.0);
+      }
     });
 
     if (!started || (initialMessageAlpha > 0 && initialMessageFading)) {
       let tapSize = Math.max(20, Math.min(W, H) * 0.05);
       const grad = ctx.createLinearGradient(W/2, 0, W/2, H);
-      grad.addColorStop(0, CONFIG.RED);
-      grad.addColorStop(1, CONFIG.RED_LIGHT);
+      grad.addColorStop(0, RED);
+      grad.addColorStop(1, RED_LIGHT);
       const y = H/2 + fontSize/2 + 40;
       const scale = 1 + 0.05 * Math.sin(time / 200);
       ctx.setTransform(scale, 0, 0, scale, W/2 * (1 - scale), y * (1 - scale));
@@ -431,17 +364,15 @@ window.onload = () => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1.0;
       if (initialMessageFading) {
-        initialMessageAlpha -= CONFIG.FADE_SPEED;
+        initialMessageAlpha -= FADE_SPEED;
         if (initialMessageAlpha < 0) initialMessageAlpha = 0;
       }
     }
-
     requestAnimationFrame(drawFrame);
   }
 
   resizeCanvas();
   requestAnimationFrame(drawFrame);
-
 };
 </script>
 </body>
