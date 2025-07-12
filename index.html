@@ -116,7 +116,6 @@ window.onload = () => {
     visibleDots = 0;
 
     if (textPoints.length > 0) {
-      // 기존 path 좌표가 있으면 그대로 사용
       textPoints.forEach(p => {
         dots.push({
           x: p.x,
@@ -133,7 +132,6 @@ window.onload = () => {
       });
     }
 
-    // 배경 dot 생성
     for (let y = 0; y < H; y += SP) {
       for (let x = 0; x < W; x += SP) {
         const insideText = textPoints.some(p => {
@@ -244,7 +242,7 @@ window.onload = () => {
   }
 
   canvas.addEventListener('click', e => {
-    audioCtx.resume(); // Safari fix
+    audioCtx.resume();
 
     if (!started) {
       started = true;
@@ -272,7 +270,6 @@ window.onload = () => {
 
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
-
       playClickSound(CLICK_SOUND_FREQ);
 
       if (clickedDot.label === '+821034405337') {
@@ -377,32 +374,35 @@ window.onload = () => {
     requestAnimationFrame(drawFrame);
   }
 
-  // Load Pretendard as font and extract path
-  opentype.load('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/woff2/Pretendard-Bold.woff2', (err, font) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    const text = 'M';
-    resizeCanvas();
-    fontSize = Math.min(W, H) * 0.4;
-    const path = font.getPath(text, 0, 0, fontSize);
-    const bounds = path.getBoundingBox();
-    const offsetX = -bounds.x1 + (W/2 - (bounds.x2 - bounds.x1)/2);
-    const offsetY = -bounds.y1 + (H/2 - (bounds.y2 - bounds.y1)/2);
+  opentype.load(
+    'https://github.com/orioncactus/pretendard/raw/main/public/assets/Pretendard-Bold.ttf',
+    (err, font) => {
+      if (err || !font) {
+        showToast('폰트 로드 실패');
+        console.error(err);
+        return;
+      }
+      const text = 'M';
+      resizeCanvas();
+      fontSize = Math.min(W, H) * 0.4;
+      const path = font.getPath(text, 0, 0, fontSize);
+      const bounds = path.getBoundingBox();
+      const offsetX = -bounds.x1 + (W/2 - (bounds.x2 - bounds.x1)/2);
+      const offsetY = -bounds.y1 + (H/2 - (bounds.y2 - bounds.y1)/2);
 
-    for (let y = 0; y < fontSize; y += SP) {
-      for (let x = 0; x < fontSize; x += SP) {
-        if (path.contains(x, y)) {
-          textPoints.push({
-            x: x + offsetX,
-            y: y + offsetY
-          });
+      for (let y = 0; y < fontSize; y += SP) {
+        for (let x = 0; x < fontSize; x += SP) {
+          if (path.contains(x, y)) {
+            textPoints.push({
+              x: x + offsetX,
+              y: y + offsetY
+            });
+          }
         }
       }
+      requestAnimationFrame(drawFrame);
     }
-    requestAnimationFrame(drawFrame);
-  });
+  );
 };
 </script>
 </body>
