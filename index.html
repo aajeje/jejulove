@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone with Timed Labels - Optimized</title>
+  <title>M Halftone with Timed Labels - Scale Optimized</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -49,6 +49,8 @@
 
 <script>
 window.onload = () => {
+  const scaleFactor = 0.5;
+
   const RED = '#FF4D4F';
   const RED_LIGHT = '#FF7875';
   const BLUE_TINT = 150;
@@ -90,11 +92,19 @@ window.onload = () => {
         : window.innerHeight,
       minHeight
     );
-    canvas.width = window.innerWidth;
-    canvas.height = vh;
+
+    canvas.width = window.innerWidth * scaleFactor;
+    canvas.height = vh * scaleFactor;
+
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = vh + 'px';
+
+    ctx.setTransform(scaleFactor, 0, 0, scaleFactor, 0, 0);
+
     W = canvas.width;
     H = canvas.height;
-    SP = Math.max(6, Math.floor(W / 100));
+    SP = Math.max(6, Math.floor((W / scaleFactor) / 100));
+
     initDotsIncrementally(false);
   }
 
@@ -184,8 +194,8 @@ window.onload = () => {
 
     if (!hoverHandler) {
       hoverHandler = e => {
-        const x = e.offsetX;
-        const y = e.offsetY;
+        const x = e.offsetX * scaleFactor;
+        const y = e.offsetY * scaleFactor;
         let active = false;
         dots.forEach(dot => {
           if (dot.isRed) {
@@ -251,8 +261,8 @@ window.onload = () => {
     }
 
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const clickX = e.clientX * scaleFactor;
+    const clickY = e.clientY * scaleFactor;
 
     let clickedDot = null;
     for (let dot of dots) {
@@ -353,7 +363,8 @@ window.onload = () => {
       grad.addColorStop(1, RED_LIGHT);
       const y = H/2 + fontSize/2 + 40;
       const scale = 1 + 0.05 * Math.sin(time / 200);
-      ctx.setTransform(scale, 0, 0, scale, W/2 * (1 - scale), y * (1 - scale));
+      ctx.setTransform(scaleFactor * scale, 0, 0, scaleFactor * scale,
+        W/2 * (1 - scale), y * (1 - scale));
       ctx.fillStyle = grad;
       ctx.font = `bold ${tapSize}px Pretendard, sans-serif`;
       ctx.textAlign = 'center';
@@ -361,7 +372,7 @@ window.onload = () => {
       ctx.shadowBlur = 4;
       ctx.globalAlpha = initialMessageAlpha;
       ctx.fillText('Tap the dots!\n(터치해보세요!)', W/2, y);
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.setTransform(scaleFactor, 0, 0, scaleFactor, 0, 0);
       ctx.globalAlpha = 1.0;
       if (initialMessageFading) {
         initialMessageAlpha -= FADE_SPEED;
