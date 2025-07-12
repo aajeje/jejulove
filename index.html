@@ -473,13 +473,13 @@
       });
     });
 
-    document.querySelectorAll('.info-top, .info-bottom, .page3-services, .monss').forEach(el => {
+    document.querySelectorAll('.info-top, .info-bottom, .monss').forEach(el => {
       el.addEventListener('mousedown', e => {
-        if (e.target.closest('a')) return;
+        if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
         e.preventDefault();
       });
       el.addEventListener('touchstart', e => {
-        if (e.target.closest('a')) return;
+        if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
         e.preventDefault();
       });
     });
