@@ -9,6 +9,8 @@
   <style>
     :root {
       --dot-color: #ffffff;
+      --brand-color: #1c1c1c;
+      --highlight-color: #FFCD00;
     }
     html {
       font-size: clamp(12px, 2vw, 16px);
@@ -22,21 +24,17 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #1c1c1c;
+      background: var(--brand-color);
       position: relative;
       font-family: "Roboto", sans-serif;
       font-weight: bold;
       user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
     }
     .pages-container {
       width: 300%;
       height: 100%;
       display: flex;
-      transition: transform 0.5s ease, opacity 0.5s ease;
-      opacity: 1;
+      transition: transform 0.5s ease;
     }
     .page {
       width: 33.3333%;
@@ -45,21 +43,17 @@
       justify-content: center;
       align-items: center;
       opacity: 0;
-      transition: opacity 0.5s;
+      transform: scale(0.95);
+      transition: opacity 0.5s, transform 0.5s;
       position: relative;
     }
     .page.active {
       opacity: 1;
+      transform: scale(1);
     }
-    .page:nth-child(1) {
-      background: #1c1c1c;
-    }
-    .page:nth-child(2) {
-      background: #f7f7f7;
-    }
-    .page:nth-child(3) {
-      background: #ffffff;
-    }
+    .page:nth-child(1) { background: #1c1c1c; }
+    .page:nth-child(2) { background: #f7f7f7; }
+    .page:nth-child(3) { background: #ffffff; }
     .info-top {
       position: absolute;
       top: calc(50% - 140px);
@@ -83,11 +77,14 @@
     .info-bottom a {
       color: #000;
       text-decoration: none;
-      font-weight: normal;
       transition: color 0.3s;
     }
     .info-bottom a:hover {
       color: #666;
+    }
+    @media (max-height: 600px) {
+      .info-top { top: 20%; }
+      .info-bottom { top: 60%; }
     }
     .page3-services {
       position: absolute;
@@ -99,7 +96,6 @@
     .service-list {
       display: flex;
       justify-content: center;
-      align-items: flex-start;
       gap: 40px;
       margin-top: 20px;
       color: #000;
@@ -118,10 +114,15 @@
       font-weight: normal;
       text-transform: lowercase;
       cursor: pointer;
-      transition: color 0.3s;
+      transition: color 0.3s, background 0.3s;
+      padding: 4px;
+      border-radius: 4px;
     }
     .service-list .item:hover {
       color: #666;
+    }
+    .service-list .item:active {
+      background: #f0f0f0;
     }
     .service-list .bullet {
       width: 6px;
@@ -148,7 +149,6 @@
     .kakao-link a {
       color: #000;
       text-decoration: none;
-      font-weight: normal;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -157,12 +157,17 @@
     .kakao-link a:hover {
       color: #666;
     }
+    .kakao-link img {
+      height: 16px;
+      vertical-align: middle;
+      filter: brightness(0) saturate(100%) invert(85%) sepia(21%) saturate(6878%) hue-rotate(359deg) brightness(105%) contrast(101%);
+    }
     .toast {
       position: fixed;
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
-      background: rgba(28,28,28,0.85);
+      background: rgba(28,28,28,0.9);
       color: #fff;
       padding: 10px 20px;
       border-radius: 20px;
@@ -171,6 +176,7 @@
       transition: all 0.3s ease;
       font-size: 0.9rem;
       z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     .toast.show {
       opacity: 1;
@@ -185,6 +191,7 @@
       flex-direction: column;
       align-items: center;
       z-index: 10;
+      cursor: pointer;
     }
     .line {
       display: flex;
@@ -197,11 +204,7 @@
       display: inline-block;
       min-width: 0.8em;
       text-align: center;
-      transition:
-        opacity 0.8s ease,
-        color 0.8s ease,
-        transform 0.8s ease,
-        font-family 0.8s ease;
+      transition: opacity 0.8s ease, color 0.8s ease, transform 0.8s ease, font-family 0.8s ease;
       opacity: 1;
       white-space: nowrap;
       vertical-align: middle;
@@ -217,8 +220,8 @@
       cursor: pointer;
     }
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: var(--dot-color);
       opacity: 0.2;
@@ -230,6 +233,14 @@
     .dot.active {
       opacity: 1;
       animation: blink 1s infinite ease-in-out;
+    }
+    .page-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--dot-color);
+      font-size: 0.8rem;
     }
     @keyframes blink {
       0%, 100% { opacity: 0.2; }
@@ -269,220 +280,220 @@
         </div>
         <div class="kakao-link">
           <a href="https://open.kakao.com/o/seDPpmGh" target="_blank" aria-label="카카오톡 문의">
-            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/kakaotalk.svg"
-                 alt="카카오톡 아이콘"
-                 style="height:16px; vertical-align:middle;">
+            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/kakaotalk.svg" alt="카카오톡 아이콘">
             카카오톡 문의
           </a>
         </div>
       </div>
     </div>
   </div>
-
   <div class="monss" id="monss"></div>
-
   <div class="dots">
     <div class="dot" id="dot1"></div>
     <div class="dot" id="dot2"></div>
     <div class="dot" id="dot3"></div>
   </div>
+  <div class="page-indicator" id="pageIndicator">1 / 3</div>
+  <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+<script>
+  const fonts = [
+    '"Roboto", sans-serif',
+    '"Playfair Display", serif',
+    '"Indie Flower", cursive',
+    '"Courier Prime", monospace'
+  ];
 
-  <div id="toast" class="toast"></div>
+  const colorsPage1 = ['#e0e0e0', '#cfcfcf', '#b3b3b3'];
+  const colorsPage2 = ['#333333', '#666666', '#000000'];
+  const colorsPage3 = ['#333333', '#666666', '#000000'];
 
-  <script>
-    const fonts = [
-      '"Roboto", sans-serif',
-      '"Playfair Display", serif',
-      '"Indie Flower", cursive',
-      '"Courier Prime", monospace'
-    ];
-
-    const colorsPage1 = ['#e0e0e0', '#cfcfcf', '#b3b3b3'];
-    const colorsPage2 = ['#333333', '#666666', '#000000'];
-    const colorsPage3 = ['#333333', '#666666', '#000000'];
-
-    function createMonss(containerId) {
-      const lines = ["Monss", "Design"];
-      const container = document.getElementById(containerId);
-      lines.forEach(text => {
-        const div = document.createElement('div');
-        div.className = 'line';
-        for (let char of text) {
-          if (char === ' ') {
-            const space = document.createElement('span');
-            space.style.width = '0.8em';
-            div.appendChild(space);
-          } else {
-            const span = document.createElement('span');
-            span.className = 'letter';
-            span.textContent = char;
-            div.appendChild(span);
-          }
+  function createMonss(containerId) {
+    const lines = ["Monss", "Design"];
+    const container = document.getElementById(containerId);
+    lines.forEach(text => {
+      const div = document.createElement('div');
+      div.className = 'line';
+      for (let char of text) {
+        if (char === ' ') {
+          const space = document.createElement('span');
+          space.style.width = '0.8em';
+          div.appendChild(space);
+        } else {
+          const span = document.createElement('span');
+          span.className = 'letter';
+          span.textContent = char;
+          div.appendChild(span);
         }
-        container.appendChild(div);
-      });
-    }
-
-    function waveFadeEffect(colors) {
-      const letters = document.querySelectorAll('.monss .letter');
-      letters.forEach((span, i) => {
-        setTimeout(() => {
-          span.style.opacity = 0;
-          setTimeout(() => {
-            span.style.fontFamily = fonts[Math.floor(Math.random() * fonts.length)];
-            span.style.color = colors[Math.floor(Math.random() * colors.length)];
-            span.style.transform = `rotate(${Math.random() * 10 - 5}deg)`;
-            span.style.opacity = 1;
-          }, 400);
-        }, i * 150);
-      });
-    }
-
-    function setActiveDot(index, color) {
-      document.documentElement.style.setProperty('--dot-color', color);
-      for (let i = 1; i <= 3; i++) {
-        const dot = document.getElementById(`dot${i}`);
-        dot.classList.toggle('active', i === index);
       }
-    }
-
-    function changePage(page) {
-      document.getElementById('pagesContainer').style.transform =
-        `translateX(-${(page - 1) * (100/3)}%)`;
-      document.querySelectorAll('.page').forEach((el, i) => {
-        el.classList.toggle('active', i === (page - 1));
-      });
-
-      let colors, dotColor;
-      if (page === 1) {
-        colors = colorsPage1;
-        dotColor = '#ffffff';
-      } else if (page === 2) {
-        colors = colorsPage2;
-        dotColor = '#000000';
-      } else if (page === 3) {
-        colors = colorsPage3;
-        dotColor = '#000000';
-      }
-
-      clearInterval(window.waveTimer);
-      waveFadeEffect(colors);
-      window.waveTimer = setInterval(() => waveFadeEffect(colors), 2500);
-      setActiveDot(page, dotColor);
-    }
-
-    createMonss('monss');
-    waveFadeEffect(colorsPage1);
-    window.waveTimer = setInterval(() => waveFadeEffect(colorsPage1), 2500);
-    setActiveDot(1, '#ffffff');
-
-    let currentPage = 1;
-    let startX = 0;
-    let currentX = 0;
-    let moved = false;
-    let mouseDown = false;
-
-    document.addEventListener('touchstart', (e) => {
-      startX = e.touches[0].clientX;
-      moved = false;
+      container.appendChild(div);
     });
-    document.addEventListener('touchmove', (e) => {
-      currentX = e.touches[0].clientX;
-      moved = true;
-    });
-    document.addEventListener('touchend', () => {
-      handleSwipe();
-    });
+  }
 
-    document.addEventListener('mousedown', (e) => {
-      startX = e.clientX;
-      moved = false;
-      mouseDown = true;
-    });
-    document.addEventListener('mousemove', (e) => {
-      if (!mouseDown) return;
-      currentX = e.clientX;
-      moved = true;
-    });
-    document.addEventListener('mouseup', () => {
-      if (!mouseDown) return;
-      mouseDown = false;
-      handleSwipe();
-    });
-
-    function handleSwipe() {
-      if (moved && (startX - currentX > 50) && currentPage < 3) {
-        currentPage++;
-        changePage(currentPage);
-      }
-      if (moved && (currentX - startX > 50) && currentPage > 1) {
-        currentPage--;
-        changePage(currentPage);
-      }
-    }
-
-    document.querySelectorAll('.dot').forEach((dot, index) => {
-      dot.addEventListener('click', () => {
-        const targetPage = index + 1;
-        if (targetPage === currentPage) return;
-        currentPage = targetPage;
-        changePage(currentPage);
-      });
-    });
-
-    function showToast(message, callback, delay = 1000) {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.classList.add('show');
+  function waveFadeEffect(colors) {
+    const letters = document.querySelectorAll('.monss .letter');
+    letters.forEach((span, i) => {
       setTimeout(() => {
-        toast.classList.remove('show');
-        if (callback) callback();
-      }, delay);
+        span.style.opacity = 0;
+        setTimeout(() => {
+          span.style.fontFamily = fonts[Math.floor(Math.random() * fonts.length)];
+          span.style.color = colors[Math.floor(Math.random() * colors.length)];
+          span.style.transform = `rotate(${Math.random() * 10 - 5}deg) scale(${1 + Math.random() * 0.3}) skewX(${Math.random() * 5 - 2.5}deg)`;
+          span.style.opacity = 1;
+        }, 400);
+      }, i * (100 + Math.random() * 100));
+    });
+  }
+
+  function setActiveDot(index, color) {
+    document.documentElement.style.setProperty('--dot-color', color);
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById(`dot${i}`);
+      dot.classList.toggle('active', i === index);
+    }
+    document.getElementById('pageIndicator').textContent = `${index} / 3`;
+  }
+
+  function changePage(page) {
+    document.getElementById('pagesContainer').style.transform =
+      `translateX(-${(page - 1) * (100/3)}%)`;
+    document.querySelectorAll('.page').forEach((el, i) => {
+      el.classList.toggle('active', i === (page - 1));
+    });
+
+    let colors, dotColor;
+    if (page === 1) {
+      colors = colorsPage1;
+      dotColor = '#ffffff';
+    } else if (page === 2) {
+      colors = colorsPage2;
+      dotColor = '#000000';
+    } else if (page === 3) {
+      colors = colorsPage3;
+      dotColor = '#000000';
     }
 
-    document.querySelectorAll('.info-bottom a[href^="tel:"]').forEach(link => {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        showToast("전화 앱으로 연결합니다", () => {
-          window.location.href = link.href;
-        });
-      });
-    });
+    clearInterval(window.waveTimer);
+    waveFadeEffect(colors);
+    window.waveTimer = setInterval(() => waveFadeEffect(colors), 2500);
+    setActiveDot(page, dotColor);
+  }
 
-    document.querySelectorAll('.info-bottom a[href^="mailto:"]').forEach(link => {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        showToast("메일 앱으로 연결합니다", () => {
-          window.location.href = link.href;
-        });
-      });
-    });
+  createMonss('monss');
+  waveFadeEffect(colorsPage1);
+  window.waveTimer = setInterval(() => waveFadeEffect(colorsPage1), 2500);
+  setActiveDot(1, '#ffffff');
 
-    document.querySelectorAll('.kakao-link a').forEach(link => {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        showToast("카카오톡으로 연결합니다", () => {
-          window.open(link.href, "_blank");
-        });
-      });
-    });
+  let currentPage = 1;
+  let startX = 0;
+  let currentX = 0;
+  let moved = false;
+  let mouseDown = false;
 
-    document.querySelectorAll('.service-list .item').forEach(item => {
-      item.addEventListener('click', () => {
-        showToast("해당 서비스 준비 중입니다");
-      });
-    });
+  document.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    moved = false;
+  });
+  document.addEventListener('touchmove', (e) => {
+    currentX = e.touches[0].clientX;
+    moved = true;
+  });
+  document.addEventListener('touchend', () => {
+    handleSwipe();
+  });
 
-    document.querySelectorAll('.info-top, .info-bottom, .monss').forEach(el => {
-      el.addEventListener('mousedown', e => {
-        if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
-        e.preventDefault();
-      });
-      el.addEventListener('touchstart', e => {
-        if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
-        e.preventDefault();
+  document.addEventListener('mousedown', (e) => {
+    startX = e.clientX;
+    moved = false;
+    mouseDown = true;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!mouseDown) return;
+    currentX = e.clientX;
+    moved = true;
+  });
+  document.addEventListener('mouseup', () => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    handleSwipe();
+  });
+
+  function handleSwipe() {
+    if (moved && (startX - currentX > 50) && currentPage < 3) {
+      currentPage++;
+      changePage(currentPage);
+    }
+    if (moved && (currentX - startX > 50) && currentPage > 1) {
+      currentPage--;
+      changePage(currentPage);
+    }
+  }
+
+  document.querySelectorAll('.dot').forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+      const targetPage = index + 1;
+      if (targetPage === currentPage) return;
+      currentPage = targetPage;
+      changePage(currentPage);
+    });
+  });
+
+  function showToast(message, callback, delay = 1000) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      if (callback) callback();
+    }, delay);
+  }
+
+  document.querySelectorAll('.info-bottom a[href^="tel:"]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      showToast("전화 앱으로 연결합니다", () => {
+        window.location.href = link.href;
       });
     });
-  </script>
+  });
+
+  document.querySelectorAll('.info-bottom a[href^="mailto:"]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      showToast("메일 앱으로 연결합니다", () => {
+        window.location.href = link.href;
+      });
+    });
+  });
+
+  document.querySelectorAll('.kakao-link a').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      showToast("카카오톡으로 연결합니다", () => {
+        window.open(link.href, "_blank");
+      });
+    });
+  });
+
+  document.querySelectorAll('.service-list .item').forEach(item => {
+    item.addEventListener('click', () => {
+      showToast("해당 서비스 준비 중입니다");
+    });
+  });
+
+  document.querySelectorAll('.info-top, .info-bottom, .monss').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
+      e.preventDefault();
+    });
+    el.addEventListener('touchstart', e => {
+      if (e.target.closest('a') || e.target.closest('.service-list .item')) return;
+      e.preventDefault();
+    });
+  });
+
+  document.querySelector('.monss').addEventListener('click', () => {
+    showToast("Monss Design 입니다!");
+  });
+</script>
 </body>
 </html>
