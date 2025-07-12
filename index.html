@@ -23,7 +23,6 @@
       touch-action: none;
       cursor: pointer;
       image-rendering: pixelated;
-      /* 중앙 정렬 유지 */
     }
     #toast {
       position: fixed;
@@ -93,11 +92,13 @@ window.onload = () => {
       minHeight
     );
 
+    // canvas 내부 해상도 줄임
     canvas.width = vw * SCALE_FACTOR;
     canvas.height = vh * SCALE_FACTOR;
 
-    canvas.style.width = (vw * SCALE_FACTOR) + "px";
-    canvas.style.height = (vh * SCALE_FACTOR) + "px";
+    // CSS 크기는 화면 그대로 유지
+    canvas.style.width = vw + "px";
+    canvas.style.height = vh + "px";
 
     W = canvas.width;
     H = canvas.height;
@@ -204,8 +205,8 @@ window.onload = () => {
 
     if (!hoverHandler) {
       hoverHandler = e => {
-        const x = e.offsetX * SCALE_FACTOR;
-        const y = e.offsetY * SCALE_FACTOR;
+        const x = e.offsetX / SCALE_FACTOR;
+        const y = e.offsetY / SCALE_FACTOR;
         let active = false;
         dots.forEach(dot => {
           if (dot.isRed) {
@@ -230,8 +231,8 @@ window.onload = () => {
 
   canvas.addEventListener('click', e => {
     const rect = canvas.getBoundingClientRect();
-    const clickX = (e.clientX - rect.left) * SCALE_FACTOR;
-    const clickY = (e.clientY - rect.top) * SCALE_FACTOR;
+    const clickX = (e.clientX - rect.left) / SCALE_FACTOR;
+    const clickY = (e.clientY - rect.top) / SCALE_FACTOR;
 
     if (!started) {
       started = true;
@@ -282,7 +283,9 @@ window.onload = () => {
   }
 
   function drawFrame(time) {
-    ctx.setTransform(SCALE_FACTOR, 0, 0, SCALE_FACTOR, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
+
     ctx.fillStyle = BACKGROUND;
     ctx.fillRect(0, 0, W / SCALE_FACTOR, H / SCALE_FACTOR);
 
@@ -344,7 +347,8 @@ window.onload = () => {
       ctx.shadowBlur = 4;
       ctx.globalAlpha = initialMessageAlpha;
       ctx.fillText('Tap the dots!\n(터치해보세요!)', W/2, y);
-      ctx.setTransform(SCALE_FACTOR, 0, 0, SCALE_FACTOR, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
       ctx.globalAlpha = 1.0;
       if (initialMessageFading) {
         initialMessageAlpha -= FADE_SPEED;
