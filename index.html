@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone with Timed Labels - Scale Optimized</title>
+  <title>M Halftone with Timed Labels - Final Fixed</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -49,8 +49,6 @@
 
 <script>
 window.onload = () => {
-  const scaleFactor = 0.5;
-
   const RED = '#FF4D4F';
   const RED_LIGHT = '#FF7875';
   const BLUE_TINT = 150;
@@ -92,25 +90,17 @@ window.onload = () => {
         : window.innerHeight,
       minHeight
     );
-
-    canvas.width = window.innerWidth * scaleFactor;
-    canvas.height = vh * scaleFactor;
-
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = vh + 'px';
-
-    ctx.setTransform(scaleFactor, 0, 0, scaleFactor, 0, 0);
-
+    canvas.width = window.innerWidth;
+    canvas.height = vh;
     W = canvas.width;
     H = canvas.height;
-    SP = Math.max(6, Math.floor((W / scaleFactor) / 100));
-
-    initDotsIncrementally(false);
+    SP = Math.max(3, Math.floor(W / 200));
+    initDots(false);
   }
 
   window.addEventListener('resize', resizeCanvas);
 
-  function initDotsIncrementally(addRedDots) {
+  function initDots(addRedDots) {
     MAX_R = (SP / 2) * 1.5;
     dots = [];
     backgroundDots = [];
@@ -135,67 +125,98 @@ window.onload = () => {
 
     const data = octx.getImageData(0, 0, W, H).data;
 
-    let y = 0;
+    for (let y = 0; y < H; y += SP) {
+      for (let x = 0; x < W; x += SP) {
+        const idx = (y * W + x) * 4;
+        const brightness = data[idx] / 255;
+        let isText = brightness < 0.9;
+        let baseR = isText
+          ? MAX_R * (1 - brightness)
+          : (y / H) * MAX_R * 0.4;
 
-    function processNextRow(deadline) {
-      let count = 0;
+        if (baseR < 0.3) baseR = 0.3;
 
-      while (y < H && (deadline.timeRemaining() > 0 || !window.requestIdleCallback)) {
-        for (let x = 0; x < W; x += SP) {
-          const idx = (y * W + x) * 4;
-          const brightness = data[idx] / 255;
-          let isText = brightness < 0.9;
-          let baseR = isText
-            ? MAX_R * (1 - brightness)
-            : (y / H) * MAX_R * 0.4;
+        dots.push({
+          x, y,
+          baseR,
+          isText,
+          isRed: false,
+          glow: false,
+          label: '',
+          phase: Math.random() * Math.PI * 2,
+          speed: isText ? 1.0 : 0.2,
+          labelAlpha: 0
+        });
 
-          if (baseR < 0.3) baseR = 0.3;
-
-          dots.push({
-            x, y,
-            baseR,
-            isText,
-            isRed: false,
-            glow: false,
-            label: '',
-            phase: Math.random() * Math.PI * 2,
-            speed: isText ? 1.0 : 0.2,
-            labelAlpha: 0
-          });
-
-          if (!isText) backgroundDots.push(dots[dots.length - 1]);
-        }
-        y += SP;
-        count++;
-        if (count > 5) break;
-      }
-
-      if (y < H) {
-        if (window.requestIdleCallback) {
-          requestIdleCallback(processNextRow);
-        } else {
-          setTimeout(() => processNextRow({ timeRemaining: () => 50 }), 10);
-        }
-      } else {
-        if (addRedDots) {
-          placeRedDots();
-        }
-        gradients.redDot = ctx.createLinearGradient(0, 0, 0, H);
-        gradients.redDot.addColorStop(0, RED);
-        gradients.redDot.addColorStop(1, RED_LIGHT);
+        if (!isText) backgroundDots.push(dots[dots.length - 1]);
       }
     }
 
-    if (window.requestIdleCallback) {
-      requestIdleCallback(processNextRow);
-    } else {
-      setTimeout(() => processNextRow({ timeRemaining: () => 50 }), 10);
+    if (addRedDots) {
+      const labels = [
+        '+821034405337',
+        'aajej@hanmail.net',
+        '카카오톡 오픈 채팅방'
+      ];
+
+      const centerX = W / 2;
+      const centerY = H / 2 + centerShift;
+      const MIN_RADIUS = Math.min(W, H) * 0.2;
+      const MAX_RADIUS = Math.min(W, H) * 0.4;
+      const MIN_DISTANCE = Math.min(W, H) * 0.2;
+
+      const positions = [];
+
+      for (let label of labels) {
+        let attempt = 0, found = false;
+        while (!found && attempt < 2000) {
+          attempt++;
+          const angle = -Math.PI/2 + Math.random() * Math.PI;
+          const distance = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
+          let newX = centerX + distance * Math.cos(angle);
+          let newY = centerY + distance * Math.sin(angle);
+
+          newX = clamp(newX, W * 0.1, W - W * 0.1);
+          newY = clamp(newY, H * 0.1, H - H * 0.1);
+
+          let conflict = positions.some(pos => 
+            Math.hypot(pos.x - newX, pos.y - newY) < MIN_DISTANCE
+          );
+
+          if (!conflict) {
+            positions.push({ x: newX, y: newY, label });
+            found = true;
+          }
+        }
+        if (!found) {
+          console.warn("배치 실패 - 중앙 배치");
+          positions.push({ x: centerX, y: centerY, label });
+        }
+      }
+
+      for (let i = 0; i < positions.length; i++) {
+        let dot = backgroundDots[i];
+        dot.x = positions[i].x;
+        dot.y = positions[i].y;
+        dot.isRed = true;
+        dot.label = positions[i].label;
+        dot.baseR *= RED_DOT_SCALE;
+      }
+
+      if (!labelTimerStarted) {
+        labelTimerStarted = true;
+        setTimeout(() => labelTimerElapsed = true, 3000);
+      }
     }
+
+    gradients.redDot = ctx.createLinearGradient(0, 0, 0, H);
+    gradients.redDot.addColorStop(0, RED);
+    gradients.redDot.addColorStop(1, RED_LIGHT);
 
     if (!hoverHandler) {
       hoverHandler = e => {
-        const x = e.offsetX * scaleFactor;
-        const y = e.offsetY * scaleFactor;
+        const x = e.offsetX;
+        const y = e.offsetY;
         let active = false;
         dots.forEach(dot => {
           if (dot.isRed) {
@@ -214,39 +235,6 @@ window.onload = () => {
     }
   }
 
-  function placeRedDots() {
-    const labels = [
-      '+821034405337',
-      'aajej@hanmail.net',
-      '카카오톡 오픈 채팅방'
-    ];
-
-    const centerX = W / 2;
-    const centerY = H / 2 + H * 0.1;
-    const distance = Math.min(W, H) * 0.3;
-
-    for (let i = 0; i < labels.length; i++) {
-      const angle = (-Math.PI / 2) + (i * (Math.PI * 2 / labels.length));
-      let newX = centerX + distance * Math.cos(angle);
-      let newY = centerY + distance * Math.sin(angle);
-
-      newX = clamp(newX, W * 0.1, W - W * 0.1);
-      newY = clamp(newY, H * 0.1, H - H * 0.1);
-
-      let dot = backgroundDots[i % backgroundDots.length];
-      dot.x = newX;
-      dot.y = newY;
-      dot.isRed = true;
-      dot.label = labels[i];
-      dot.baseR *= RED_DOT_SCALE;
-    }
-
-    if (!labelTimerStarted) {
-      labelTimerStarted = true;
-      setTimeout(() => labelTimerElapsed = true, 3000);
-    }
-  }
-
   function clamp(val, min, max) {
     return Math.min(Math.max(val, min), max);
   }
@@ -255,14 +243,14 @@ window.onload = () => {
     if (!started) {
       started = true;
       initialMessageFading = true;
-      initDotsIncrementally(true);
+      initDots(true);
       playClickSound(CLICK_SOUND_FREQ);
       return;
     }
 
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX * scaleFactor;
-    const clickY = e.clientY * scaleFactor;
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
 
     let clickedDot = null;
     for (let dot of dots) {
@@ -278,6 +266,7 @@ window.onload = () => {
 
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
+
       playClickSound(CLICK_SOUND_FREQ);
 
       if (clickedDot.label === '+821034405337') {
@@ -363,8 +352,7 @@ window.onload = () => {
       grad.addColorStop(1, RED_LIGHT);
       const y = H/2 + fontSize/2 + 40;
       const scale = 1 + 0.05 * Math.sin(time / 200);
-      ctx.setTransform(scaleFactor * scale, 0, 0, scaleFactor * scale,
-        W/2 * (1 - scale), y * (1 - scale));
+      ctx.setTransform(scale, 0, 0, scale, W/2 * (1 - scale), y * (1 - scale));
       ctx.fillStyle = grad;
       ctx.font = `bold ${tapSize}px Pretendard, sans-serif`;
       ctx.textAlign = 'center';
@@ -372,7 +360,7 @@ window.onload = () => {
       ctx.shadowBlur = 4;
       ctx.globalAlpha = initialMessageAlpha;
       ctx.fillText('Tap the dots!\n(터치해보세요!)', W/2, y);
-      ctx.setTransform(scaleFactor, 0, 0, scaleFactor, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1.0;
       if (initialMessageFading) {
         initialMessageAlpha -= FADE_SPEED;
