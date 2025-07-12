@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>M Halftone with Opentype.js</title>
+  <title>M Halftone with Timed Labels - Final Fixed</title>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
     html, body {
@@ -47,9 +47,6 @@
 <canvas id="halftoneCanvas"></canvas>
 <div id="toast"></div>
 
-<!-- opentype.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.min.js"></script>
-
 <script>
 window.onload = () => {
   const RED = '#FF4D4F';
@@ -76,7 +73,6 @@ window.onload = () => {
   let initialMessageFading = false;
   let gradients = {};
   let hoverHandler;
-  let textPoints = [];
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -87,7 +83,6 @@ window.onload = () => {
   }
 
   function resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
     const minHeight = 300;
     const vh = Math.max(
       (window.visualViewport && window.visualViewport.height > 0)
@@ -95,14 +90,10 @@ window.onload = () => {
         : window.innerHeight,
       minHeight
     );
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = vh * dpr;
-    canvas.style.width = `${window.innerWidth}px`;
-    canvas.style.height = `${vh}px`;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    W = canvas.width / dpr;
-    H = canvas.height / dpr;
+    canvas.width = window.innerWidth;
+    canvas.height = vh;
+    W = canvas.width;
+    H = canvas.height;
     SP = Math.max(3, Math.floor(W / 200));
     initDots(false);
   }
@@ -115,42 +106,49 @@ window.onload = () => {
     backgroundDots = [];
     visibleDots = 0;
 
-    if (textPoints.length > 0) {
-      textPoints.forEach(p => {
-        dots.push({
-          x: p.x,
-          y: p.y,
-          baseR: MAX_R,
-          isText: true,
-          isRed: false,
-          glow: false,
-          label: '',
-          phase: Math.random() * Math.PI * 2,
-          speed: 1.0,
-          labelAlpha: 0
-        });
-      });
-    }
+    const text = 'M';
+    fontSize = Math.min(W, H) * 0.4;
+    const centerShift = H * 0.1;
+
+    const off = document.createElement('canvas');
+    off.width = W;
+    off.height = H;
+    const octx = off.getContext('2d');
+
+    octx.fillStyle = BACKGROUND;
+    octx.fillRect(0, 0, W, H);
+    octx.fillStyle = '#000';
+    octx.font = `${fontSize}px Pretendard, sans-serif`;
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(text, W / 2, H / 2 + centerShift);
+
+    const data = octx.getImageData(0, 0, W, H).data;
 
     for (let y = 0; y < H; y += SP) {
       for (let x = 0; x < W; x += SP) {
-        const insideText = textPoints.some(p => {
-          return Math.abs(p.x - x) < SP/2 && Math.abs(p.y - y) < SP/2;
-        });
-        if (insideText) continue;
-        const baseR = (y / H) * MAX_R * 0.4;
+        const idx = (y * W + x) * 4;
+        const brightness = data[idx] / 255;
+        let isText = brightness < 0.9;
+        let baseR = isText
+          ? MAX_R * (1 - brightness)
+          : (y / H) * MAX_R * 0.4;
+
+        if (baseR < 0.3) baseR = 0.3;
+
         dots.push({
           x, y,
-          baseR: Math.max(baseR, 0.3),
-          isText: false,
+          baseR,
+          isText,
           isRed: false,
           glow: false,
           label: '',
           phase: Math.random() * Math.PI * 2,
-          speed: 0.2,
+          speed: isText ? 1.0 : 0.2,
           labelAlpha: 0
         });
-        backgroundDots.push(dots[dots.length - 1]);
+
+        if (!isText) backgroundDots.push(dots[dots.length - 1]);
       }
     }
 
@@ -162,7 +160,7 @@ window.onload = () => {
       ];
 
       const centerX = W / 2;
-      const centerY = H / 2;
+      const centerY = H / 2 + centerShift;
       const MIN_RADIUS = Math.min(W, H) * 0.2;
       const MAX_RADIUS = Math.min(W, H) * 0.4;
       const MIN_DISTANCE = Math.min(W, H) * 0.2;
@@ -242,8 +240,6 @@ window.onload = () => {
   }
 
   canvas.addEventListener('click', e => {
-    audioCtx.resume();
-
     if (!started) {
       started = true;
       initialMessageFading = true;
@@ -270,6 +266,7 @@ window.onload = () => {
 
     if (clickedDot) {
       showToast(`${clickedDot.label}로 이동합니다.`);
+
       playClickSound(CLICK_SOUND_FREQ);
 
       if (clickedDot.label === '+821034405337') {
@@ -362,8 +359,7 @@ window.onload = () => {
       ctx.shadowColor = 'rgba(0,0,0,0.2)';
       ctx.shadowBlur = 4;
       ctx.globalAlpha = initialMessageAlpha;
-      ctx.fillText('Tap the dots!', W/2, y);
-      ctx.fillText('(터치해보세요!)', W/2, y + tapSize * 1.2);
+      ctx.fillText('Tap the dots!\n(터치해보세요!)', W/2, y);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1.0;
       if (initialMessageFading) {
@@ -374,35 +370,8 @@ window.onload = () => {
     requestAnimationFrame(drawFrame);
   }
 
-  opentype.load(
-    './jejulove/fonts/Pretendard-Bold.ttf',
-    (err, font) => {
-      if (err || !font) {
-        showToast('폰트 로드 실패');
-        console.error(err);
-        return;
-      }
-      const text = 'M';
-      resizeCanvas();
-      fontSize = Math.min(W, H) * 0.4;
-      const path = font.getPath(text, 0, 0, fontSize);
-      const bounds = path.getBoundingBox();
-      const offsetX = -bounds.x1 + (W/2 - (bounds.x2 - bounds.x1)/2);
-      const offsetY = -bounds.y1 + (H/2 - (bounds.y2 - bounds.y1)/2);
-
-      for (let y = 0; y < fontSize; y += SP) {
-        for (let x = 0; x < fontSize; x += SP) {
-          if (path.contains(x, y)) {
-            textPoints.push({
-              x: x + offsetX,
-              y: y + offsetY
-            });
-          }
-        }
-      }
-      requestAnimationFrame(drawFrame);
-    }
-  );
+  resizeCanvas();
+  requestAnimationFrame(drawFrame);
 };
 </script>
 </body>
