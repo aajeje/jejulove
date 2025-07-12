@@ -13,14 +13,17 @@
       height: 100%;
       background: #FAFAFA;
       overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       font-family: 'Pretendard', sans-serif;
     }
     canvas {
-      width: 100vw;
-      height: 100vh;
       display: block;
       touch-action: none;
       cursor: pointer;
+      image-rendering: pixelated;
+      /* 중앙 정렬 유지 */
     }
     #toast {
       position: fixed;
@@ -82,6 +85,7 @@ window.onload = () => {
 
   function resizeCanvas() {
     const minHeight = 300;
+    const vw = window.innerWidth;
     const vh = Math.max(
       (window.visualViewport && window.visualViewport.height > 0)
         ? window.visualViewport.height
@@ -89,13 +93,11 @@ window.onload = () => {
       minHeight
     );
 
-    // 실제 픽셀 해상도를 절반으로
-    canvas.width = window.innerWidth * SCALE_FACTOR;
+    canvas.width = vw * SCALE_FACTOR;
     canvas.height = vh * SCALE_FACTOR;
 
-    // CSS 사이즈는 그대로 유지
-    canvas.style.width = window.innerWidth + "px";
-    canvas.style.height = vh + "px";
+    canvas.style.width = (vw * SCALE_FACTOR) + "px";
+    canvas.style.height = (vh * SCALE_FACTOR) + "px";
 
     W = canvas.width;
     H = canvas.height;
@@ -280,9 +282,7 @@ window.onload = () => {
   }
 
   function drawFrame(time) {
-    // 스케일 변환 적용
     ctx.setTransform(SCALE_FACTOR, 0, 0, SCALE_FACTOR, 0, 0);
-
     ctx.fillStyle = BACKGROUND;
     ctx.fillRect(0, 0, W / SCALE_FACTOR, H / SCALE_FACTOR);
 
@@ -306,6 +306,7 @@ window.onload = () => {
         ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + BLUE_TINT})`;
       }
       ctx.fill();
+
       if (dot.isRed && dot.labelAlpha > 0) {
         ctx.globalAlpha = dot.labelAlpha;
         let fsize = Math.max(12, Math.min(16, W * 0.02));
@@ -325,6 +326,7 @@ window.onload = () => {
         dot.labelAlpha = Math.min(dot.labelAlpha + 0.03, 1.0);
       }
     });
+
     if (!started || (initialMessageAlpha > 0 && initialMessageFading)) {
       let tapSize = Math.max(20, Math.min(W, H) * 0.05);
       const grad = ctx.createLinearGradient(W/2, 0, W/2, H);
